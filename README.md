@@ -10,6 +10,7 @@ Build and migration plans are versioned under [`docs/plans/`](docs/plans/README.
 
 - [01 - VDI Terraform Platform Buildout](docs/plans/01-vdi-terraform-buildout.md) - greenfield module + environment build (Complete)
 - [02 - Azure 1.0 to Terraform Migration](docs/plans/02-azure-1.0-to-terraform-migration.md) - porting the legacy estate onto the Terraform modules (**scaffold complete** — offline validate; live apply when creds ready)
+- [03 - Cursor account handoff](docs/plans/03-cursor-handoff.md) - context / locked decisions / prompt history for continuing on another Cursor account
 
 ## Useful entry points
 

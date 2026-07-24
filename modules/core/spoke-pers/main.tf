@@ -38,7 +38,7 @@ module "nsg_names" {
 }
 
 module "route_table_name" {
-  count  = var.hub01_firewall_private_ip != null ? 1 : 0
+  count  = var.hub01_firewall_private_ip != "" ? 1 : 0
   source = "../../naming"
 
   resource_type   = "route_table"
@@ -130,7 +130,7 @@ resource "azurerm_subnet_network_security_group_association" "this" {
 # ---------------------------------------------------------------------------
 
 resource "azurerm_route_table" "default_to_firewall" {
-  count = var.hub01_firewall_private_ip != null ? 1 : 0
+  count = var.hub01_firewall_private_ip != "" ? 1 : 0
 
   name                          = module.route_table_name[0].name
   resource_group_name           = var.resource_group_name
@@ -147,10 +147,9 @@ resource "azurerm_route_table" "default_to_firewall" {
 }
 
 resource "azurerm_subnet_route_table_association" "default_to_firewall" {
-  for_each = var.hub01_firewall_private_ip != null ? {
+  for_each = var.hub01_firewall_private_ip != "" ? {
     for k, v in var.subnets : k => v if v.associate_route_table
   } : {}
-
   subnet_id      = azurerm_subnet.this[each.key].id
   route_table_id = azurerm_route_table.default_to_firewall[0].id
 }

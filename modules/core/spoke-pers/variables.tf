@@ -93,13 +93,13 @@ variable "hub01_id" {
 
 variable "hub01_firewall_private_ip" {
   description = <<-EOT
-    When set, creates the legacy default-to-firewall route table
-    (0.0.0.0/0 -> VirtualAppliance, BGP propagation disabled) and associates it
-    to subnets with associate_route_table = true. Leave null to skip the RT
-    (Hub01 Routing Intent only).
+    Private IP of the Hub01 Azure Firewall. When non-empty, creates the legacy
+    default-to-firewall route table (0.0.0.0/0 -> VirtualAppliance, BGP
+    propagation disabled) and associates it to subnets with
+    associate_route_table = true. Leave empty to skip the RT.
   EOT
-  type        = string
-  default     = null
+  type    = string
+  default = ""
 }
 
 variable "create_network_watcher" {

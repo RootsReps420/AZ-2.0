@@ -24,6 +24,6 @@ output "hub_connection_id" {
 }
 
 output "route_table_id" {
-  description = "Resource ID of the legacy default-to-firewall route table, or null when hub01_firewall_private_ip is unset."
+  description = "Resource ID of the legacy default-to-firewall route table, or null when hub01_firewall_private_ip is empty."
   value       = try(azurerm_route_table.default_to_firewall[0].id, null)
 }

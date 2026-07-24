@@ -28,7 +28,7 @@ From `docs/subscription-inventory.md`:
 | Env | Deploy SPN | Agent pool (example) |
 |---|---|---|
 | int | `SC-R-VDI-INT-C-01` | `uks-int-vdi-mgmt-vss-01` |
-| prod | `SC-P-VDI-PRD-C-01` | `uks-prd-vdi-mgmt-vss-01` |
+| prd | `SC-P-VDI-PRD-C-01` | `uks-prd-vdi-mgmt-vss-01` |
 
 Wire real pool names / backend config in AzDo variable groups (`tf-backend-*`).
 

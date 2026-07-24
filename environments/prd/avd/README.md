@@ -1,4 +1,4 @@
-﻿# environments/prod/avd
+# environments/prd/avd
 
 MSH pooled host pools + **per-BU scaling plans** (30 pools) with shared schedule catalog.
 

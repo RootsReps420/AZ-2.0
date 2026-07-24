@@ -10,7 +10,7 @@ variable "location" {
 
 variable "environment" {
   type    = string
-  default = "prod"
+  default = "prd"
 }
 
 variable "subscription_code" {

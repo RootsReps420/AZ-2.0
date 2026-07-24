@@ -1,6 +1,6 @@
 azure_subscription_id = "00000000-0000-0000-0000-000000000000" # TODO(deploy): prod mgmt subscription
 location              = "uksouth"
-environment           = "prod"
+environment           = "prd"
 subscription_code     = "mgmt"
 
 hub01_id = "/subscriptions/REPLACE/resourceGroups/REPLACE/providers/Microsoft.Network/virtualHubs/REPLACE"

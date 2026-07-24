@@ -1,4 +1,4 @@
-# environments/prod/avd — PERS personal host pools + personal scaling
+# environments/prd/avd — PERS personal host pools + personal scaling
 # Fill var.pers_host_pools from live inventory; empty map = no PERS AVD objects.
 # Schedule template from legacy scripts params/AVD-ScalingPlans.json (personal).
 

@@ -4,6 +4,10 @@ Deploys the **FSLogix profile storage** for a lab: a storage account (Premium
 FileStorage by default) with SMB file service settings, identity-based
 authentication, and one or more file shares.
 
+Labs pass a `shares` map of `profiles-{bu}-{pool}` (+ `redirection`). INT uses
+RTL 100 GB quotas; PRD uses legacy hostpool JSON quotas — see
+`environments/*/labs/fslogix_shares.tf`.
+
 ## Azure resources
 
 - `azurerm_storage_account` (with `share_properties` / file service settings)

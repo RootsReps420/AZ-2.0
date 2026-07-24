@@ -18,7 +18,7 @@ Build and migration plans are versioned under [`docs/plans/`](docs/plans/README.
 | [`docs/dummies-guide.md`](docs/dummies-guide.md) | **Start here** — simple guide, diagrams, IP tables, placeholder checklist |
 | [`docs/lld-terraform-summary.md`](docs/lld-terraform-summary.md) | Original Terraform LLD (Word) summarised |
 | `environments/int/*` | First live target (DT) — connectivity / mgmt / labs / avd |
-| `environments/prod/*` | Production mirrors |
+| `environments/prd/*` | Production (prd) mirrors |
 | `pipelines/` | AzDo Terraform init/plan/apply |
 | `docs/variable-set.md` | Tags / DNS / GUIDs for tfvars |
 | `docs/address-plan-hubs.md` | Hub/spoke CIDRs |

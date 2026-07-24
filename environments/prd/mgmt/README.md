@@ -1,6 +1,6 @@
-﻿# environments/prod/mgmt
+# environments/prd/mgmt
 
-LAW + mgmt spoke for **prod** (legacy prd). Agent VMSS stays PowerShell.
+LAW + mgmt spoke for **prd**. Agent VMSS stays PowerShell.
 
 | Item | CIDR | Source |
 |---|---|---|

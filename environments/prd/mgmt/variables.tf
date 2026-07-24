@@ -10,7 +10,7 @@ variable "location" {
 
 variable "environment" {
   type    = string
-  default = "prod"
+  default = "prd"
 }
 
 variable "subscription_code" {
@@ -19,7 +19,7 @@ variable "subscription_code" {
 }
 
 variable "hub01_id" {
-  description = "Hub01 resource ID from environments/prod/connectivity output hub01_id."
+  description = "Hub01 resource ID from environments/prd/connectivity output hub01_id."
   type        = string
 }
 

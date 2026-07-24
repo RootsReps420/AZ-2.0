@@ -1,6 +1,6 @@
 azure_subscription_id = "a6fe8767-8373-4b41-ad17-b4301ca6fcd0" # Known prod gallery/AVD-related GUID — confirm if AVD stack shares this sub
 location              = "uksouth"
-environment           = "prod"
+environment           = "prd"
 subscription_code     = "vdi"
 
 # From prod/mgmt output law_id (optional)

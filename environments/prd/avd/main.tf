@@ -1,4 +1,4 @@
-# environments/prod/avd — MSH host pools + per-BU scaling plans (+ decom siblings)
+# environments/prd/avd — MSH host pools + per-BU scaling plans (+ decom siblings)
 # Session hosts stay PowerShell. Registration token outputs for Get-PlacementAVD.
 
 locals {

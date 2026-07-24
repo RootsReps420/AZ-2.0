@@ -4,11 +4,13 @@
 # Deploys a PERS (personal desktop) workload spoke:
 #   - Virtual Network + subnets
 #   - Network Security Group per subnet (+ association)
+#   - Optional default-to-firewall route table (legacy p_routeTables)
 #   - Optional Network Watcher
 #   - Hub connection to Hub01 (secured hub)
 #
-# Hub01 Routing Intent handles all egress, so this spoke needs NO user-defined
-# routes. (Contrast with modules/core/spoke-msh, which overrides routing.)
+# When hub01_firewall_private_ip is set, associates a legacy-shaped UDR
+# (0.0.0.0/0 -> VirtualAppliance, BGP prop disabled) to opted-in subnets.
+# Contrast with modules/core/spoke-msh, which uses a three-rule dual-hub UDR.
 #
 # All resource names come from modules/naming.
 # ---------------------------------------------------------------------------
@@ -33,6 +35,18 @@ module "nsg_names" {
   subscription_id = var.subscription_id
   environment     = var.environment
   description     = "${var.name}-${each.key}"
+}
+
+module "route_table_name" {
+  count  = var.hub01_firewall_private_ip != null ? 1 : 0
+  source = "../../naming"
+
+  resource_type   = "route_table"
+  location        = var.location
+  subscription_id = var.subscription_id
+  environment     = var.environment
+  description     = "${var.name}-default-to-firewall"
+  unique_id       = var.unique_id
 }
 
 module "watcher_name" {
@@ -111,6 +125,36 @@ resource "azurerm_subnet_network_security_group_association" "this" {
   network_security_group_id = azurerm_network_security_group.this[each.key].id
 }
 
+# ---------------------------------------------------------------------------
+# Legacy default-to-firewall RT (p_routeTables) — optional when FW IP is set.
+# ---------------------------------------------------------------------------
+
+resource "azurerm_route_table" "default_to_firewall" {
+  count = var.hub01_firewall_private_ip != null ? 1 : 0
+
+  name                          = module.route_table_name[0].name
+  resource_group_name           = var.resource_group_name
+  location                      = var.location
+  bgp_route_propagation_enabled = false
+  tags                          = var.tags
+
+  route {
+    name                   = "Route-To-Firewall"
+    address_prefix         = "0.0.0.0/0"
+    next_hop_type          = "VirtualAppliance"
+    next_hop_in_ip_address = var.hub01_firewall_private_ip
+  }
+}
+
+resource "azurerm_subnet_route_table_association" "default_to_firewall" {
+  for_each = var.hub01_firewall_private_ip != null ? {
+    for k, v in var.subnets : k => v if v.associate_route_table
+  } : {}
+
+  subnet_id      = azurerm_subnet.this[each.key].id
+  route_table_id = azurerm_route_table.default_to_firewall[0].id
+}
+
 resource "azurerm_network_watcher" "this" {
   count = var.create_network_watcher ? 1 : 0
 
@@ -120,7 +164,7 @@ resource "azurerm_network_watcher" "this" {
   tags                = var.tags
 }
 
-# Connect the spoke VNet to Hub01. No UDR — Hub01 Routing Intent programs routes.
+# Connect the spoke VNet to Hub01.
 resource "azurerm_virtual_hub_connection" "hub01" {
   # Intentional literal name (not via modules/naming): the connection name embeds
   # the spoke name + target hub for readability. "vhc" matches the TDA abbreviation.

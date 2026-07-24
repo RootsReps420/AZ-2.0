@@ -18,7 +18,7 @@ and overrides Hub01 Routing Intent with an explicit route table.
 ## Azure resources
 
 - `azurerm_virtual_network`, `azurerm_subnet` (per `subnets`)
-- `azurerm_network_security_group` + association (per subnet)
+- `azurerm_network_security_group` + association (per subnet; optional `security_rules` — labs pass legacy VNet-scoped Multi rules)
 - `azurerm_route_table` (three-rule UDR) + subnet associations
 - `azurerm_network_watcher` (when `create_network_watcher`)
 - `azurerm_virtual_hub_connection` x2 (Hub01 + Hub02)

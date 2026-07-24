@@ -1,4 +1,4 @@
-# environments/prod/mgmt — LAW + mgmt spoke (agent VMSS stays PS)
+# environments/prd/mgmt — LAW + mgmt spoke (agent VMSS stays PS)
 # CIDRs from legacy platform params/prd/config.yml (VERIFIED).
 
 locals {

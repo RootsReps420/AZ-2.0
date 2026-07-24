@@ -12,7 +12,7 @@ It explains the repo in plain English, shows the network with IP ranges, lists e
 | [address-plan-hubs.md](address-plan-hubs.md)                                                 | Hub/spoke CIDR notes                                                                      |
 | [variable-set.md](variable-set.md)                                                           | Tags / DNS / identity                                                                     |
 | [subscription-inventory.md](subscription-inventory.md)                                       | SPNs + known gallery GUIDs                                                                |
-| [plans/02-azure-1.0-to-terraform-migration.md](plans/02-azure-1.0-to-terraform-migration.md) | Migration plan that shaped `int`/`prod` stacks                                            |
+| [plans/02-azure-1.0-to-terraform-migration.md](plans/02-azure-1.0-to-terraform-migration.md) | Migration plan that shaped `int`/`prd` stacks                                             |
 
 
 **Original LLD path (authoritative Word):**  
@@ -70,7 +70,7 @@ flowchart LR
   end
   subgraph now [Current cutover target]
     g["_global vWAN"]
-    c["int or prod / connectivity"]
+    c["int or prd / connectivity"]
     m["mgmt"]
     l["labs"]
     a["avd"]
@@ -87,7 +87,7 @@ flowchart LR
 | --------------------------------- | --------------------------------------------------------------- |
 | `environments/uksouth/{dev,prod}` | Still in repo as **demo / superseded** — do not use for cutover |
 | First live env                    | `int` (DT = dev test)                                           |
-| Production                        | `prod` (legacy code `prd`)                                      |
+| Production                        | `prd` (folder + naming segment; TDA §4)                         |
 | Italy / Spain                     | LLD future — not cutover yet                                    |
 
 
@@ -107,7 +107,7 @@ Deploy **in this order**:
 5. environments/<env>/avd          → host pools, scaling, gallery, KV
 ```
 
-`<env>` is `int` or `prod`.
+`<env>` is `int` or `prd`.
 
 ```mermaid
 flowchart TB
@@ -144,7 +144,7 @@ flowchart TB
   rg["Resource group\nnaming module builds the name"]
   hub["Virtual hub Hub01 or Hub02\naddress_prefix = hub CIDR"]
   vnet["Spoke VNet\naddress_space from labs tfvars"]
-  snet["Subnet e.g. AVDSubnet\n+ NSG; MSH also route table"]
+  snet["Subnet e.g. AVDSubnet\n+ NSG; PERS + MSH route tables"]
   conn["virtual hub connection\nlinks VNet to hub"]
   hp["AVD host pool\nTF"]
   token["registration token\nTF output"]
@@ -167,7 +167,8 @@ flowchart TB
 | Layer                              | PERS lab       | MSH lab        | How is it Created?              |
 | ---------------------------------- | -------------- | -------------- | ------------------------------- |
 | VNet + subnet + NSG                | yes            | yes            | TF (`spoke-pers` / `spoke-msh`) |
-| Route table (UDR)                  | **no**         | **yes**        | TF (`spoke-msh`)                |
+| NSG custom rules (legacy DO/deny/TURN) | yes (per lab) | yes (VNet scope) | TF (`labs/nsg_rules.tf`)     |
+| Route table (UDR)                  | **yes** (default-to-firewall) | **yes** (3-rule) | TF (`spoke-pers` / `spoke-msh`) |
 | Link to Hub01                      | yes            | yes            | TF                              |
 | Link to Hub02                      | no             | yes            | TF                              |
 | Host pool / workspace / scaling    | in `avd` stack | in `avd` stack | TF                              |
@@ -196,10 +197,21 @@ flowchart LR
 
 
 
-**PERS:** Hub01 Routing Intent steers traffic through the firewall. No route table on the spoke.  
-**MSH:** Spoke route table **overrides** that for internet (`0.0.0.0/0` → Hub02) and sends private/Azure traffic to Hub01 firewall IP.
+**PERS:** Legacy `default-to-firewall` UDR (`0.0.0.0/0` → Hub01 AZFW private IP, BGP prop off) plus Hub01 connection with internet security.  
+**MSH:** Spoke route table **overrides** Routing Intent for internet (`0.0.0.0/0` → Hub02) and sends private/Azure traffic to Hub01 firewall IP.
 
 > **Caveat (still open):** Hub02 VPN **peer/site** is not wired yet, and the exact `0.0.0.0/0` next-hop type under vWAN is marked `PENDING(LLD)` in code. Scaffold is ready; production VPN settings wait on network.
+
+### NSG custom rules (legacy exact)
+
+Labs wire `security_rules` from `nsg_rules.tf` (Azure defaults 65000+ stay platform-managed):
+
+| Lab | Scope | Custom rules |
+|---|---|---|
+| PERS most | AVDSubnet CIDR | DO TCP+UDP → deny east-west → deny TURN out to `20.202.0.0/16` |
+| PERS **01i** | AVDSubnet | DO TCP+UDP + RPA (8181–8183, 8199–8200) + deny east-west (**no TURN**) |
+| PERS **01k/01l** | AVDSubnet | Combined TCP DO + deny east-west |
+| MSH **01a/01b** | **VNet** CIDR | Same 4 rules on every AVDSubnet NSG (`*-inbound-vnet`) |
 
 ---
 
@@ -215,10 +227,10 @@ Shared DNS (both envs): `10.19.96.1`, `10.19.97.1 [IB ON PREM]`
 | Env      | Hub01 (secured)   | Hub02 (unsecured) |
 | -------- | ----------------- | ----------------- |
 | **int**  | `10.170.245.0/24` | `10.170.246.0/24` |
-| **prod** | `10.170.247.0/24` | `10.170.244.0/24` |
+| **prd**  | `10.170.247.0/24` | `10.170.244.0/24` |
 
 
-Do **not** use prod Hub02 `10.170.248.0/24` — that collides with PERS lab **01l** `10.170.248.0/21`.
+Do **not** use prd Hub02 `10.170.248.0/24` — that collides with PERS lab **01l** `10.170.248.0/21`.
 
 ### Mgmt spoke (AgentsSubnet = whole VNet)
 
@@ -226,7 +238,7 @@ Do **not** use prod Hub02 `10.170.248.0/24` — that collides with PERS lab **01
 | Env  | CIDR                |
 | ---- | ------------------- |
 | int  | `10.170.139.192/26` |
-| prod | `10.170.241.64/26`  |
+| prd | `10.170.241.64/26`  |
 
 
 
@@ -372,12 +384,12 @@ Values below are **defaults in code** or **tfvars.example**. Anything marked ⚠
 
 
 
-### `connectivity` (int / prod)
+### `connectivity` (int / prd)
 
 
-| Item                    | int                                            | prod              |
+| Item                    | int                                            | prd               |
 | ----------------------- | ---------------------------------------------- | ----------------- |
-| `environment`           | `int`                                          | `prod`            |
+| `environment`           | `int`                                          | `prd`             |
 | `subscription_code`     | `conn`                                         | `conn`            |
 | Hub01 prefix            | `10.170.245.0/24`                              | `10.170.247.0/24` |
 | Hub02 prefix            | `10.170.246.0/24`                              | `10.170.244.0/24` |
@@ -394,7 +406,7 @@ Values below are **defaults in code** or **tfvars.example**. Anything marked ⚠
 ### `mgmt`
 
 
-| Item                    | int                     | prod               |
+| Item                    | int                     | prd                |
 | ----------------------- | ----------------------- | ------------------ |
 | `subscription_code`     | `mgmt`                  | `mgmt`             |
 | Mgmt CIDR               | `10.170.139.192/26`     | `10.170.241.64/26` |
@@ -410,12 +422,13 @@ Values below are **defaults in code** or **tfvars.example**. Anything marked ⚠
 ### `labs`
 
 
-| Item                | int                                            | prod   |
-| ------------------- | ---------------------------------------------- | ------ |
-| `subscription_code` | `vdi`                                          | `vdi`  |
-| PERS / MSH maps     | see §4                                         | see §4 |
-| FSLogix             | enabled; share `profiles` **5120** GB; AADKERB | same   |
-| Hub IDs + FW IP     | ⚠️                                             | ⚠️     |
+| Item                | int                                                                 | prd                                                                 |
+| ------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `subscription_code` | `vdi`                                                               | `vdi`                                                               |
+| PERS / MSH maps     | see §4                                                              | see §4                                                              |
+| NSG rules           | per-lab legacy (`nsg_rules.tf`)                                     | same patterns                                                       |
+| PERS RT             | `default-to-firewall` → Hub01 AZFW                                  | same                                                                |
+| FSLogix             | `profiles-{bu}-{pool}` all **100** GB + `redirection` 100 (RTL)     | legacy hostpool quotas + `redirection` 100 (incl. 005-01 = 51200) |
 
 
 
@@ -423,7 +436,7 @@ Values below are **defaults in code** or **tfvars.example**. Anything marked ⚠
 ### `avd`
 
 
-| Item                     | int                                              | prod                                             |
+| Item                     | int                                              | prd                                              |
 | ------------------------ | ------------------------------------------------ | ------------------------------------------------ |
 | `subscription_code`      | `vdi`                                            | `vdi`                                            |
 | MSH host pools           | **30** (`001-00` … `999-02`)                     | same map                                         |
@@ -498,7 +511,7 @@ Anything with **zeros**, **REPLACE**, or empty maps below **blocks a real apply*
 **Subscription GUID cells still empty in inventory** (pull from AzDo/GLB):
 
 
-| Scope                    | int                                                           | prod |
+| Scope                    | int                                                           | prd |
 | ------------------------ | ------------------------------------------------------------- | ---- |
 | `_global` / connectivity | TODO                                                          | TODO |
 | mgmt                     | TODO                                                          | TODO |
@@ -510,7 +523,7 @@ Anything with **zeros**, **REPLACE**, or empty maps below **blocks a real apply*
 Known gallery-related GUIDs (examples only until confirmed):
 
 - int: `717872a8-000f-4990-a35b-0f957a9c7856`
-- prod: `a6fe8767-8373-4b41-ad17-b4301ca6fcd0`
+- prd: `a6fe8767-8373-4b41-ad17-b4301ca6fcd0`
 
 
 
@@ -608,7 +621,7 @@ Useful greps:
 rg "TODO\\(deploy\\)|REPLACE|00000000-" environments
 
 # Hub CIDRs
-rg "hub0[12]_address_prefix" environments/int environments/prod
+rg "hub0[12]_address_prefix" environments/int environments/prd
 
 # MSH pool map
 rg "msh_host_pools" environments/int/avd/msh_scaling.tf

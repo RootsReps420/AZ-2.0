@@ -27,7 +27,7 @@ variable "hub02_id" {
 }
 
 variable "hub01_firewall_private_ip" {
-  description = "Hub01 AZFW private IP for MSH UDR next hop (from connectivity output)."
+  description = "Hub01 AZFW private IP for PERS default-to-firewall RT and MSH UDR next hop (from connectivity output)."
   type        = string
 }
 

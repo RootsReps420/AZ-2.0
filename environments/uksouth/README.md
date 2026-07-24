@@ -6,11 +6,9 @@ They are **superseded** by the migration layout:
 
 ```
 environments/_global/                 # shared Virtual WAN
-environments/int/connectivity/        # DT — first live target
-environments/prod/connectivity/       # production (legacy prd)
-environments/{int,prod}/{mgmt,avd,labs}/   # Phase D+ (not yet created)
-environments/{idv,ici,itt}/...             # keep split; scaffold later
+environments/int/{connectivity,mgmt,labs,avd}/   # DT — first live target
+environments/prd/{connectivity,mgmt,labs,avd}/   # production (TDA code prd)
 ```
 
-Do not deploy from `uksouth/` for the Azure 1.0 cutover. Prefer `int` / `prod` per-scope roots.
-These folders may be removed once `int`/`prod` stacks cover the greenfield module composition.
+Do not deploy from `uksouth/` for the Azure 1.0 cutover. Prefer `int` / `prd` per-scope roots.
+These folders may be removed once `int`/`prd` stacks fully replace the greenfield demos.

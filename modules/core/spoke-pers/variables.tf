@@ -23,7 +23,7 @@ variable "subscription_id" {
 }
 
 variable "environment" {
-  description = "Environment segment used to name the spoke resources (e.g. \"dev\", \"prod\")."
+  description = "Environment segment used to name the spoke resources (e.g. \"int\", \"prd\")."
   type        = string
 }
 
@@ -57,10 +57,13 @@ variable "subnets" {
   description = <<-EOT
     Subnets keyed by name. Each subnet gets an NSG (with the given security rules)
     and an NSG association. security_rules are keyed by rule name.
+    When hub01_firewall_private_ip is set, associate_route_table associates the
+    legacy default-to-firewall route table.
   EOT
   type = map(object({
     address_prefixes  = list(string)
     service_endpoints = optional(list(string), [])
+    associate_route_table = optional(bool, true)
     delegation = optional(object({
       name         = string
       service_name = string
@@ -86,6 +89,17 @@ variable "subnets" {
 variable "hub01_id" {
   description = "Resource ID of Hub01 (secured hub) that this spoke connects to. Output hub_id from modules/platform/hub-secured."
   type        = string
+}
+
+variable "hub01_firewall_private_ip" {
+  description = <<-EOT
+    When set, creates the legacy default-to-firewall route table
+    (0.0.0.0/0 -> VirtualAppliance, BGP propagation disabled) and associates it
+    to subnets with associate_route_table = true. Leave null to skip the RT
+    (Hub01 Routing Intent only).
+  EOT
+  type        = string
+  default     = null
 }
 
 variable "create_network_watcher" {

@@ -1,5 +1,5 @@
 variable "azure_subscription_id" {
-  description = "Lab subscription GUID for prod (or primary lab sub — split later if multi-lab)."
+  description = "Lab subscription GUID for prd (or primary lab sub — split later if multi-lab)."
   type        = string
 }
 
@@ -10,7 +10,7 @@ variable "location" {
 
 variable "environment" {
   type    = string
-  default = "prod"
+  default = "prd"
 }
 
 variable "subscription_code" {
@@ -27,7 +27,7 @@ variable "hub02_id" {
 }
 
 variable "hub01_firewall_private_ip" {
-  description = "Hub01 AZFW private IP for MSH UDR next hop (from connectivity output)."
+  description = "Hub01 AZFW private IP for PERS default-to-firewall RT and MSH UDR next hop (from connectivity output)."
   type        = string
 }
 

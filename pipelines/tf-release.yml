@@ -11,7 +11,7 @@ parameters:
     default: int
     values:
       - int
-      - prod
+      - prd
   - name: stackName
     displayName: Stack
     type: string
@@ -35,12 +35,12 @@ variables:
   - name: azureServiceConnection
     ${{ if eq(parameters.envName, 'int') }}:
       value: SC-R-VDI-INT-C-01
-    ${{ if eq(parameters.envName, 'prod') }}:
+    ${{ if eq(parameters.envName, 'prd') }}:
       value: SC-P-VDI-PRD-C-01
   - name: agentPool
     ${{ if eq(parameters.envName, 'int') }}:
       value: uks-int-vdi-mgmt-vss-01
-    ${{ if eq(parameters.envName, 'prod') }}:
+    ${{ if eq(parameters.envName, 'prd') }}:
       value: uks-prd-vdi-mgmt-vss-01
   # Backend — set in AzDo variable group or override here
   - name: tfBackendResourceGroup

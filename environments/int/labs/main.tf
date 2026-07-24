@@ -1,5 +1,7 @@
 # environments/int/labs — PERS + MSH spokes (session hosts stay PS)
 # CIDRs from legacy platform/pers params/int/config.yml (VERIFIED).
+# NSG rules: nsg_rules.tf (legacy labCorePersistent / labCoreMulti).
+# FSLogix shares: fslogix_shares.tf (INT RTL = 100 GB each).
 
 locals {
   location = var.location
@@ -72,12 +74,15 @@ module "spoke_pers" {
   dns_servers   = var.dns_servers
   subnets = {
     "AVDSubnet" = {
-      address_prefixes = each.value.avd_subnet
+      address_prefixes      = each.value.avd_subnet
+      associate_route_table = true
+      security_rules        = local.pers_security_rules[each.key]
     }
   }
 
-  hub01_id = var.hub01_id
-  tags     = module.tags_pers.tags
+  hub01_id                  = var.hub01_id
+  hub01_firewall_private_ip = var.hub01_firewall_private_ip
+  tags                      = module.tags_pers.tags
 }
 
 # MSH lab spokes — dual hub + UDR scaffold (Hub02 VPN next-hop still PENDING)
@@ -98,17 +103,18 @@ module "spoke_msh" {
     for name, cidr in each.value.avd_subnets : name => {
       address_prefixes      = [cidr]
       associate_route_table = true
+      security_rules        = local.msh_security_rules[each.key]
     }
   }
 
-  hub01_id                 = var.hub01_id
-  hub02_id                 = var.hub02_id
+  hub01_id                  = var.hub01_id
+  hub02_id                  = var.hub02_id
   hub01_firewall_private_ip = var.hub01_firewall_private_ip
 
   tags = module.tags_mult.tags
 }
 
-# FSLogix storage (MSH) — profile ops stay PS
+# FSLogix storage (MSH) — profile ops stay PS; share map from fslogix_shares.tf
 module "storage_fslogix" {
   count  = var.enable_fslogix ? 1 : 0
   source = "../../../modules/core/storage-fslogix"
@@ -124,9 +130,7 @@ module "storage_fslogix" {
     directory_type = "AADKERB"
   }
 
-  shares = {
-    "profiles" = { quota_gb = 5120 }
-  }
+  shares = local.fslogix_shares
 
   tags = module.tags_mult.tags
 }

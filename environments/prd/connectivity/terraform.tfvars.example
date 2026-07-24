@@ -1,6 +1,6 @@
-﻿azure_subscription_id = "00000000-0000-0000-0000-000000000000" # TODO(deploy): prod connectivity subscription GUID
+azure_subscription_id = "00000000-0000-0000-0000-000000000000" # TODO(deploy): prod connectivity subscription GUID
 location              = "uksouth"
-environment           = "prod"
+environment           = "prd"
 subscription_code     = "conn"
 
 virtual_wan_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/REPLACE/providers/Microsoft.Network/virtualWans/REPLACE"

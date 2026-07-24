@@ -52,6 +52,7 @@ Terraform that lives in a **managed GitHub repo**, deployed via **Azure DevOps**
 |---|---|
 | [dummies-guide.md](../dummies-guide.md) | Simple architecture + placeholders |
 | [02-azure-1.0-to-terraform-migration.md](02-azure-1.0-to-terraform-migration.md) | Main migration plan (scaffold complete) |
+| [04-gap-analysis-legacy-vs-tf.md](04-gap-analysis-legacy-vs-tf.md) | Remaining parity gaps + waves A–D (**under review**) |
 | [lld-terraform-summary.md](../lld-terraform-summary.md) | LLD extract |
 | [address-plan-hubs.md](../address-plan-hubs.md) | Hub/spoke CIDRs |
 | [variable-set.md](../variable-set.md) | Tags / DNS / GUIDs |
@@ -76,7 +77,7 @@ Open Cursor plans (this machine under `C:\Users\Dan\.cursor\plans\`):
 - Pipelines: `tf-release.yml` uses envName `int` \| `prd`.
 - Offline validate green on key stacks.
 
-**Known incomplete (next work — still under review):** gap audit plan — per-pool max sessions/RDP still wrong (blanket 16); multi-STA FSLogix; lab KVs; service endpoints/ACLs; alerts/DCRs; untrack legacy gitlinks from GitHub.
+**Known incomplete (next work — still under review):** [04-gap-analysis-legacy-vs-tf.md](04-gap-analysis-legacy-vs-tf.md) — per-pool max sessions/RDP still wrong (blanket 16); multi-STA FSLogix; lab KVs; service endpoints/ACLs; alerts/DCRs; untrack legacy gitlinks from GitHub.
 
 ---
 
@@ -107,14 +108,14 @@ Chronological themes — use as intent, not as commands to re-run blindly:
 Continue the AzTF vWAN / Azure 1.0→Terraform work in c:\Repos\TerraformShit.
 
 Read docs/dummies-guide.md, docs/plans/02-azure-1.0-to-terraform-migration.md,
-and docs/plans/03-cursor-handoff.md.
+docs/plans/03-cursor-handoff.md, and docs/plans/04-gap-analysis-legacy-vs-tf.md.
 
 Privacy Mode is on — do not treat legacy/ as training material; keep it local-only.
 Do not terraform plan/apply without my say-so (validate/fmt only).
 VMs stay PowerShell. Env code is prd not prod. INT FSLogix is RTL 100GB; PRD is exact.
 
-Open plan "Legacy TF gap audit" is still under review — do not execute Wave A/B
-until I say go. Ask me what to do next.
+Gap analysis waves A–D are still under review — do not execute until I say go.
+Ask me what to do next.
 ```
 
 ---

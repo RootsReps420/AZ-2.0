@@ -13,6 +13,8 @@ It explains the repo in plain English, shows the network with IP ranges, lists e
 | [variable-set.md](variable-set.md)                                                           | Tags / DNS / identity                                                                     |
 | [subscription-inventory.md](subscription-inventory.md)                                       | SPNs + known gallery GUIDs                                                                |
 | [plans/02-azure-1.0-to-terraform-migration.md](plans/02-azure-1.0-to-terraform-migration.md) | Migration plan that shaped `int`/`prd` stacks                                             |
+| [plans/04-gap-analysis-legacy-vs-tf.md](plans/04-gap-analysis-legacy-vs-tf.md)               | Remaining legacy↔TF parity gaps + waves A–D (**under review**)                            |
+| [plans/03-cursor-handoff.md](plans/03-cursor-handoff.md)                                     | Handoff brief for another Cursor account                                                  |
 
 
 **Original LLD path (authoritative Word):**  

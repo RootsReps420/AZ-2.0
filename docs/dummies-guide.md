@@ -257,11 +257,11 @@ Every environment stack is thin glue: it calls these modules with env-specific m
 
 | Module | What it does | Used by |
 |---|---|---|
-| [`modules/avd/hostpool`](../modules/avd/hostpool) | One host pool + **rotating registration token** (`time_rotating`). Pooled or Personal. Sensitive token output for PS pipelines. | `avd` MSH / PERS / PRIV |
+| [`modules/avd/hostpool`](../modules/avd/hostpool) | One host pool + **rotating registration token** (`time_rotating`). Optional `scheduled_agent_updates` window (MSH: Sat 01:00 GMT). Pooled or Personal. Sensitive token output for PS pipelines. | `avd` MSH / PERS / PRIV |
 | [`modules/avd/workspace`](../modules/avd/workspace) | Workspace + application groups + associations. | `avd` |
-| [`modules/avd/scalingplan`](../modules/avd/scalingplan) | Scaling plan + host-pool associations. Pooled schedules via azurerm; **personal schedules via azapi** (provider gap). | `avd` (MSH standard+decom; PERS/PRIV personal) |
+| [`modules/avd/scalingplan`](../modules/avd/scalingplan) | Scaling plan + host-pool associations + optional LAW diagnostics. `exclusion_tag` (legacy `spExclude`). Pooled schedules via azurerm; **personal schedules via azapi** (provider gap). | `avd` (MSH standard+decom; PERS/PRIV personal) |
 | [`modules/gallery/gallery`](../modules/gallery/gallery) | One Compute Gallery + RBAC (Packer custom role). | `avd` |
-| [`modules/gallery/image-definition`](../modules/gallery/image-definition) | One image **definition** (metadata). Versions = Packer. | `avd` — 50Ã— `for_each` |
+| [`modules/gallery/image-definition`](../modules/gallery/image-definition) | One image **definition** (metadata). Versions = Packer. | `avd` — 50× `for_each` |
 
 ### 2.6 Which stack calls which modules
 

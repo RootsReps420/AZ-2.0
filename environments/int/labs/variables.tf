@@ -62,6 +62,18 @@ variable "law_id" {
   default     = null
 }
 
+variable "enable_lab_keyvaults" {
+  description = "Deploy 14 Premium lab Key Vaults (2 Multi + 12 Personal)."
+  type        = bool
+  default     = true
+}
+
+variable "enable_pers_blob" {
+  description = "Deploy 12 Personal lab blob storage accounts (StorageV2 Standard_LRS)."
+  type        = bool
+  default     = true
+}
+
 # VERIFIED from legacy params/int/config.yml — pers labs (VNet == AVD subnet for /28s)
 variable "pers_spokes" {
   description = "PERS lab spokes keyed by lab id (01a, 01b, …)."

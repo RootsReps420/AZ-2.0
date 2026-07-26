@@ -1,7 +1,7 @@
 # Gap analysis — legacy Azure 1.0 vs Terraform
 
-**Status:** In progress — Wave A (C01–C07) done; Wave B partial (C08/C09/C13/C14 done; C10 CMK, C11 KVs, C12 PERS blob still open); Wave C/D backlog.  
-**Date:** 2026-07-26 (source-verified; execution started)  
+**Status:** In progress — Wave A done; Wave B done except README polish (C15); Wave C/D backlog.  
+**Date:** 2026-07-26 (source-verified; execution in progress)  
 **Scope:** TF-worthy deployables in legacy vs `environments/{int,prd}` + `modules/**`.
 
 **Companion:** [03-cursor-handoff.md](03-cursor-handoff.md) · [02-azure-1.0-to-terraform-migration.md](02-azure-1.0-to-terraform-migration.md)  
@@ -116,9 +116,9 @@ Re-checked against: all **30** `legacy/mult/.../params/hostpools/*.json`, `RDPPr
 | C07 | dummies-guide + validate avd | **done** |
 | C08 | storage-fslogix module SMB/ACL model | **done** |
 | C09 | 10 FSLogix STAs + share placement | **done** |
-| C10 | STA ACLs + CMK | **partial** — Deny ACLs + AVD/Agents wired; **CMK/UAMI still open** (needs C11) |
-| C11 | 14 lab Key Vaults | **open** |
-| C12 | 12 PERS blob STAs | **open** |
+| C10 | STA ACLs + CMK | **done** — Deny ACLs + per-STA UAMI + RSA-4096 CMK on Multi Key Vaults |
+| C11 | 14 lab Key Vaults | **done** — 2 Multi + 12 Personal, Premium, Deny ACLs |
+| C12 | 12 PERS blob STAs | **done** — StorageV2 Standard_LRS, Deny ACLs |
 | C13 | Service endpoints labs+mgmt | **done** |
 | C14 | Mgmt NSG CIDR + firewall RT | **done** |
 | C15 | validate labs+mgmt + READMEs | **partial** — validate green; README polish open |

@@ -133,6 +133,14 @@ module "storage_fslogix" {
   shared_access_key_enabled         = false
   infrastructure_encryption_enabled = true
 
+  identity_type = "UserAssigned"
+  identity_ids  = [azurerm_user_assigned_identity.fslogix[each.key].id]
+
+  customer_managed_key = var.enable_lab_keyvaults ? {
+    key_vault_key_id          = module.keyvault_mult[each.value.lab].cmk_key_ids["${local.fslogix_legacy_sta_name[each.key]}-sa-cmk"]
+    user_assigned_identity_id = azurerm_user_assigned_identity.fslogix[each.key].id
+  } : null
+
   azure_files_authentication = {
     directory_type = "AADKERB"
     active_directory = {
@@ -162,4 +170,6 @@ module "storage_fslogix" {
   log_analytics_workspace_id = var.law_id
 
   tags = module.tags_mult.tags
+
+  depends_on = [module.keyvault_mult]
 }

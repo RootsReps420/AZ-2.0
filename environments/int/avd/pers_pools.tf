@@ -1,5 +1,5 @@
-# PERS personal host-pool catalog — from legacy scripts PERS-General_* + PERS-Packaging_*
-# (PRIV / Robot out of scope). Same pool IDs for int and prd.
+# PERS personal host-pool catalog — from legacy scripts PERS-General_* + PERS-Packaging_*.
+# PRIV is in priv_pools.tf; Robot stays out (RDP broker, not AVD).
 
 locals {
   # RDP strings from legacy scripts/params/RDPProperties.json (PS join name:value)

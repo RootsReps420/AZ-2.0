@@ -14,11 +14,11 @@ module "storage_pers_blob" {
   unique_id           = each.key
   name_override       = "uks${local.env}vdipersblb${each.key}"
 
-  account_tier                    = "Standard"
-  account_kind                    = "StorageV2"
-  account_replication_type        = "LRS"
-  public_network_access_enabled   = true
-  shared_access_key_enabled       = false
+  account_tier                  = "Standard"
+  account_kind                  = "StorageV2"
+  account_replication_type      = "LRS"
+  public_network_access_enabled = true
+  shared_access_key_enabled     = false
 
   network_rules = {
     default_action = "Deny"

@@ -2,6 +2,10 @@ output "pers_vnet_ids" {
   value = { for k, m in module.spoke_pers : k => m.vnet_id }
 }
 
+output "priv_vnet_ids" {
+  value = { for k, m in module.spoke_priv : k => m.vnet_id }
+}
+
 output "msh_vnet_ids" {
   value = { for k, m in module.spoke_msh : k => m.vnet_id }
 }
@@ -17,6 +21,10 @@ output "lab_keyvault_mult_ids" {
 
 output "lab_keyvault_pers_ids" {
   value = { for k, m in module.keyvault_pers : k => m.keyvault_id }
+}
+
+output "lab_keyvault_priv_ids" {
+  value = { for k, m in module.keyvault_priv : k => m.keyvault_id }
 }
 
 output "pers_blob_storage_account_names" {

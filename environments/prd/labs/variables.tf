@@ -74,6 +74,21 @@ variable "enable_pers_blob" {
   default     = true
 }
 
+# VERIFIED from legacy pers params/prd/config.yml — privileged lab (AVD + reserved FW space)
+variable "priv_spokes" {
+  description = "Privileged (labCorePriv) spokes. Local AZFW not deployed; Hub01 default-to-firewall."
+  type = map(object({
+    address_space = list(string)
+    avd_subnet    = list(string)
+  }))
+  default = {
+    "01a" = {
+      address_space = ["10.170.228.0/22"]
+      avd_subnet    = ["10.170.228.0/23"]
+    }
+  }
+}
+
 # VERIFIED from legacy platform params/prd/config.yml — pers labs (VNet == AVD subnet)
 variable "pers_spokes" {
   description = "PERS lab spokes keyed by lab id (01a, 01b, …)."

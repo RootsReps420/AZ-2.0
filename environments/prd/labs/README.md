@@ -1,11 +1,12 @@
 # environments/prd/labs
 
-Personal and multisession lab spokes for **prd**. Session hosts stay PowerShell.
+Personal, privileged, and multisession lab spokes for **prd**. Session hosts stay PowerShell.
 
 ## Verified PRD CIDRs (legacy `config.yml`)
 
 | Spoke | CIDR | Source |
 |---|---|---|
+| Privileged 01a | VNet `10.170.228.0/22`, AVD `10.170.228.0/23` | `net_lab_core_priv_01a_*` |
 | Personal 01a–01h, 01k | `/21` from `10.170.160.0` … `10.170.232.0` | platform `prd/config.yml` |
 | Personal 01i | `10.170.224.0/22` | Robotics |
 | Personal 01j | `10.170.241.0/27` | P&D (adjacent to management `241.64/26`) |
@@ -15,8 +16,9 @@ Personal and multisession lab spokes for **prd**. Session hosts stay PowerShell.
 
 ## Route tables
 
-- **Personal:** `default-to-firewall` (`0.0.0.0/0` ? Hub01 Azure Firewall) via `hub01_firewall_private_ip`
+- **Personal / Privileged:** `default-to-firewall` (`0.0.0.0/0` ? Hub01 Azure Firewall) via `hub01_firewall_private_ip`
 - **Multisession:** three-rule dual-hub user-defined routes
+- Legacy privileged local Azure Firewall is **not** redeployed (post–Virtual WAN; Hub01 is the next hop)
 
 ## FSLogix profile storage
 
@@ -26,12 +28,13 @@ Personal and multisession lab spokes for **prd**. Session hosts stay PowerShell.
 
 ## Lab Key Vaults / personal blob storage
 
-Same shape as int: 14 Premium Key Vaults; 12 personal blob accounts (`uksprdvdipersblb{lab}`).
+15 Premium Key Vaults when privileged is enabled (2 Multi + 12 Personal + 1 Privileged); 12 personal blob accounts (`uksprdvdipersblb{lab}`).
 
 ## Inputs to wire at deploy
 
 - `agents_subnet_id` — management Agents subnet
 - `law_id` — Log Analytics workspace for file diagnostics (optional)
+- Set `priv_spokes = {}` to skip privileged lab resources
 
 ```bash
 terraform init -backend=false

@@ -55,18 +55,6 @@ variable "time_zone" {
   default     = "GMT Standard Time"
 }
 
-variable "exclusion_tag" {
-  description = "VM tag name that excludes session hosts from this scaling plan. Legacy uses spExclude."
-  type        = string
-  default     = null
-}
-
-variable "log_analytics_workspace_id" {
-  description = "Resource ID of the Log Analytics workspace for scaling-plan diagnostics (allLogs). Null skips the diagnostic setting."
-  type        = string
-  default     = null
-}
-
 variable "host_pool_associations" {
   description = "Host pools this scaling plan applies to, keyed by descriptor. scaling_plan_enabled toggles enforcement per pool."
   type = map(object({

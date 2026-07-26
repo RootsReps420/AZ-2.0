@@ -1,0 +1,6 @@
+{
+  "terraform.languageServer.enable": true,
+  "terraform.validation.enableEnhancedValidation": true,
+  "terraform.experimentalFeatures.validateOnSave": true,
+  "terraform.indexing.ignorePaths": ["**/legacy/**", "**/.terraform/**"]
+}

@@ -6,8 +6,11 @@ locals {
     "001-01" = { rdp_persona = "copypaste", description = "PRIV-General copypaste" }
   }
 
-  priv_host_pools = var.enable_priv_host_pools ? (
-    length(var.priv_host_pools) > 0 ? var.priv_host_pools : local.priv_host_pools_catalog
+  enable_priv_host_pools   = var.enable_priv_host_pools
+  priv_host_pools_override = var.priv_host_pools
+
+  priv_host_pools = local.enable_priv_host_pools ? (
+    length(local.priv_host_pools_override) > 0 ? local.priv_host_pools_override : local.priv_host_pools_catalog
   ) : {}
 }
 

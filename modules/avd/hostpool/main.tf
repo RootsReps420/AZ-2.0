@@ -30,6 +30,11 @@ resource "time_rotating" "token" {
   rotation_hours = var.token_validity_hours
 }
 
+locals {
+  # Bridge avoids terraform-ls confusing the dynamic block name with the variable.
+  scheduled_agent_updates = var.scheduled_agent_updates
+}
+
 resource "azurerm_virtual_desktop_host_pool" "this" {
   name                = module.hostpool_name.name
   resource_group_name = var.resource_group_name
@@ -52,7 +57,7 @@ resource "azurerm_virtual_desktop_host_pool" "this" {
   custom_rdp_properties = var.custom_rdp_properties
 
   dynamic "scheduled_agent_updates" {
-    for_each = var.scheduled_agent_updates != null ? [var.scheduled_agent_updates] : []
+    for_each = local.scheduled_agent_updates != null ? [local.scheduled_agent_updates] : []
     content {
       enabled                   = scheduled_agent_updates.value.enabled
       timezone                  = scheduled_agent_updates.value.timezone

@@ -112,20 +112,6 @@ variable "token_validity_hours" {
   }
 }
 
-variable "scheduled_agent_updates" {
-  description = "Optional scheduled AVD agent update window. Legacy MSH: enabled, GMT Standard Time, Saturday 01:00, use_session_host_timezone false."
-  type = object({
-    enabled                   = optional(bool, true)
-    timezone                  = optional(string, "GMT Standard Time")
-    use_session_host_timezone = optional(bool, false)
-    schedules = list(object({
-      day_of_week = string
-      hour_of_day = number
-    }))
-  })
-  default = null
-}
-
 # ---------------------------------------------------------------------------
 # Metadata
 # ---------------------------------------------------------------------------

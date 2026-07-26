@@ -37,3 +37,8 @@ output "pers_registration_tokens" {
   sensitive = true
   value     = { for k, m in module.hostpool_pers : k => m.registration_token }
 }
+
+output "msh_dcr_ids" {
+  description = "Multisession data collection rule IDs for session-host association scripts."
+  value       = try(module.dcr_msh[0].dcr_ids, {})
+}

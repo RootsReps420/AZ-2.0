@@ -1,7 +1,7 @@
 # Gap analysis — legacy Azure 1.0 vs Terraform
 
-**Status:** In progress — Wave A done; Wave B done except README polish (C15); Wave C/D backlog.  
-**Date:** 2026-07-26 (source-verified; execution in progress)  
+**Status:** In progress — Waves A/B done; Wave C started (Log Analytics, data collection, alerts shell, RBAC hooks); alert rule templates + personal host pools still open.  
+**Date:** 2026-07-26  
 **Scope:** TF-worthy deployables in legacy vs `environments/{int,prd}` + `modules/**`.
 
 **Companion:** [03-cursor-handoff.md](03-cursor-handoff.md) · [02-azure-1.0-to-terraform-migration.md](02-azure-1.0-to-terraform-migration.md)  
@@ -122,7 +122,12 @@ Re-checked against: all **30** `legacy/mult/.../params/hostpools/*.json`, `RDPPr
 | C13 | Service endpoints labs+mgmt | **done** |
 | C14 | Mgmt NSG CIDR + firewall RT | **done** |
 | C15 | validate labs+mgmt + READMEs | **partial** — validate green; README polish open |
-| Wave C+ | LAW/DCR/alerts/RBAC | blocked on §E |
+| C16 | LAW resource-only permissions int/prd | **done** |
+| C17 | MSH data collection rules + custom tables | **done** (definitions; VM associations stay PowerShell) |
+| C18 | Alert action group + alert managed identity shell | **done** (rule templates still open) |
+| C19 | Full alert rule templates | **open** |
+| C20 | Platform RBAC (mgmt VM Contributor, gallery custom role support, WVD Power On Off hook) | **partial** — mgmt SP defaulted; gallery supports custom role id; WVD principal via tfvars |
+| Wave D | Personal host pools | **open** |
 
 ---
 

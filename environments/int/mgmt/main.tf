@@ -41,12 +41,45 @@ module "management" {
   environment         = local.env
   unique_id           = "01"
 
-  law_retention_in_days           = 30
-  create_data_collection_endpoint = true
-  create_avd_insights_dcr         = true
+  law_retention_in_days                = 30
+  # Legacy int law params: p_resourcePermissions = true
+  law_allow_resource_only_permissions  = true
+  create_data_collection_endpoint      = true
+  # Keep thin Insights DCR here; full MSH rule set lives in avd (modules/platform/dcr-msh)
+  create_avd_insights_dcr              = true
 
-  # TODO(Phase D extend): APR, alert UAMI, multi-DCR map, custom LAW tables
+  action_groups = {
+    devices_lab = {
+      short_name = "acg-devices"
+      enabled    = true
+      email_receivers = {
+        DevicesLabEmailReceiver = {
+          email_address = var.alert_action_group_email
+        }
+      }
+    }
+  }
+
   tags = module.tags.tags
+}
+
+# Legacy alert_msi_identity.bicep — used by vCPU quota scheduled queries (Wave C alert rules)
+resource "azurerm_user_assigned_identity" "alert_logs" {
+  count = var.enable_alert_uami ? 1 : 0
+
+  name                = "custom-log-alerts-msi"
+  resource_group_name = azurerm_resource_group.mgmt.name
+  location            = local.location
+  tags                = module.tags.tags
+}
+
+# Legacy access.bicep — DevOps SP Virtual Machine Contributor on mgmt subscription
+resource "azurerm_role_assignment" "devops_vm_contributor" {
+  count = var.devops_vm_contributor_principal_id != null ? 1 : 0
+
+  scope                = "/subscriptions/${var.azure_subscription_id}"
+  role_definition_name = "Virtual Machine Contributor"
+  principal_id         = var.devops_vm_contributor_principal_id
 }
 
 # Mgmt spoke — Hub01 + legacy default-to-firewall RT. Agent VMSS not TF-managed.

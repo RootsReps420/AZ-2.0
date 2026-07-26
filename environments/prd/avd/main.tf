@@ -211,3 +211,26 @@ module "image_definition" {
 
   tags = module.tags.tags
 }
+
+module "dcr_msh" {
+  count  = var.law_id != null ? 1 : 0
+  source = "../../../modules/platform/dcr-msh"
+
+  resource_group_name        = azurerm_resource_group.avd.name
+  location                   = local.location
+  log_analytics_workspace_id = var.law_id
+  dce_name                   = "uks-${local.env}-vdi-avd-dce-mult-all"
+  dcr_main_name              = "uks-${local.env}-vdi-avd-dcr-mult"
+  dcr_insights_name          = "uks-${local.env}-vdi-avd-dcr-mult-vminsights"
+  dcr_fsl_name               = "uks-${local.env}-vdi-avd-dcr-multfslp"
+  dcr_wss_name               = "uks-${local.env}-vdi-avd-dcr-multwss"
+  tags                       = module.tags.tags
+}
+
+resource "azurerm_role_assignment" "wvd_power_on_off" {
+  count = var.wvd_power_on_off_principal_id != null ? 1 : 0
+
+  scope                = "/subscriptions/${var.azure_subscription_id}"
+  role_definition_name = "Desktop Virtualization Power On Off Contributor"
+  principal_id         = var.wvd_power_on_off_principal_id
+}

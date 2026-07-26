@@ -50,11 +50,30 @@ variable "dns_servers" {
 }
 
 variable "mgmt_role_assignments" {
-  description = "Subscription/RG RBAC for mgmt scope. Principals from tfvars (Phase D access.bicep port). VM/AAD RBAC stays PS."
+  description = "Extra subscription/RG RBAC for mgmt scope (map-driven). VM login / AAD group RBAC stays PowerShell."
   type = map(object({
     scope                = string
     role_definition_name = string
     principal_id         = string
   }))
   default = {}
+}
+
+variable "alert_action_group_email" {
+  description = "Legacy acg-DevicesLab email receiver."
+  type        = string
+  default     = "GRPG882932@nalloydsbanking.com"
+}
+
+variable "enable_alert_uami" {
+  description = "Create custom-log-alerts-msi (Reader on lab subs assigned when alert rules land)."
+  type        = bool
+  default     = true
+}
+
+variable "devops_vm_contributor_principal_id" {
+  description = "Legacy SP-P-VDI-ADA-VMC-01 object ID (Virtual Machine Contributor on mgmt subscription). Null skips."
+  type        = string
+  # legacy/platform/.../params/prd/01/mgmt/params-access.json
+  default     = "e40ed67b-b191-4562-b9b1-130f8d389d65"
 }

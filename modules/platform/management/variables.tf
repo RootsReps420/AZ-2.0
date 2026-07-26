@@ -60,6 +60,12 @@ variable "law_daily_quota_gb" {
   default     = -1
 }
 
+variable "law_allow_resource_only_permissions" {
+  description = "Legacy enableLogAccessUsingOnlyResourcePermissions. int=true, prd=false."
+  type        = bool
+  default     = true
+}
+
 # ---------------------------------------------------------------------------
 # Data collection
 # ---------------------------------------------------------------------------

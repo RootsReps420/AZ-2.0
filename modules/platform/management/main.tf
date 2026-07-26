@@ -96,13 +96,15 @@ module "query_alert_names" {
 # ---------------------------------------------------------------------------
 
 resource "azurerm_log_analytics_workspace" "this" {
-  name                = module.law_name.name
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  sku                 = var.law_sku
-  retention_in_days   = var.law_retention_in_days
-  daily_quota_gb      = var.law_daily_quota_gb
-  tags                = var.tags
+  name                               = module.law_name.name
+  resource_group_name                = var.resource_group_name
+  location                           = var.location
+  sku                                = var.law_sku
+  retention_in_days                  = var.law_retention_in_days
+  daily_quota_gb                     = var.law_daily_quota_gb
+  # Legacy p_resourcePermissions / enableLogAccessUsingOnlyResourcePermissions
+  allow_resource_only_permissions    = var.law_allow_resource_only_permissions
+  tags                               = var.tags
 }
 
 # ---------------------------------------------------------------------------

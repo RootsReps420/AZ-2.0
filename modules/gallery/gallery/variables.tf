@@ -44,12 +44,24 @@ variable "description" {
 }
 
 variable "role_assignments" {
-  description = "RBAC role assignments on the gallery, keyed by descriptor. Typically grants the Packer build MSI Contributor to publish image versions."
+  description = <<-EOT
+    RBAC on the gallery. Use role_definition_name for built-in roles, or
+    role_definition_id for legacy custom Packer roles (GUID only; scoped at apply).
+  EOT
   type = map(object({
-    role_definition_name = string
     principal_id         = string
+    role_definition_name = optional(string)
+    role_definition_id   = optional(string) # GUID of custom role definition
   }))
   default = {}
+
+  validation {
+    condition = alltrue([
+      for a in values(var.role_assignments) :
+      (a.role_definition_name != null) != (a.role_definition_id != null)
+    ])
+    error_message = "Each gallery role assignment must set exactly one of role_definition_name or role_definition_id."
+  }
 }
 
 variable "tags" {

@@ -38,5 +38,12 @@ resource "azurerm_role_assignment" "this" {
 
   scope                = azurerm_shared_image_gallery.this.id
   role_definition_name = each.value.role_definition_name
-  principal_id         = each.value.principal_id
+  role_definition_id = each.value.role_definition_id != null ? (
+    startswith(each.value.role_definition_id, "/subscriptions/")
+    ? each.value.role_definition_id
+    : "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${each.value.role_definition_id}"
+  ) : null
+  principal_id = each.value.principal_id
 }
+
+data "azurerm_client_config" "current" {}

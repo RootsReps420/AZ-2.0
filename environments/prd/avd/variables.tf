@@ -38,12 +38,19 @@ variable "mandatory_tags" {
 }
 
 variable "gallery_role_assignments" {
-  description = "RBAC on the gallery (Packer MSIs need Contributor)."
+  description = "RBAC on the gallery. Packer MSI uses legacy custom role GUID (role_definition_id)."
   type = map(object({
-    role_definition_name = string
     principal_id         = string
+    role_definition_name = optional(string)
+    role_definition_id   = optional(string)
   }))
   default = {}
+}
+
+variable "wvd_power_on_off_principal_id" {
+  description = "Object ID of the Windows Virtual Desktop first-party service principal (AppId 9cdead84-...). Null skips. Resolve in tenant before apply."
+  type        = string
+  default     = null
 }
 
 variable "keyvault_unique_id" {

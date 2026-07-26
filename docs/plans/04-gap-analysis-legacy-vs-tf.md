@@ -1,6 +1,6 @@
 # Gap analysis — legacy Azure 1.0 vs Terraform
 
-**Status:** In progress — Waves A/B done; Wave C mostly done (LAW/DCR/alerts C16–C19); Wave D personal host pools still open.  
+**Status:** Waves A/B/C done; Wave D PERS host pools catalog wired (deploy-time principal IDs still tfvars).  
 **Date:** 2026-07-26  
 **Scope:** TF-worthy deployables in legacy vs `environments/{int,prd}` + `modules/**`.
 
@@ -126,8 +126,8 @@ Re-checked against: all **30** `legacy/mult/.../params/hostpools/*.json`, `RDPPr
 | C17 | MSH data collection rules + custom tables | **done** (definitions; VM associations stay PowerShell) |
 | C18 | Alert action group + alert managed identity shell | **done** |
 | C19 | Full alert rule templates + APR + UAMI Reader | **done** (wire sub IDs + FSLogix share scopes in tfvars at deploy) |
-| C20 | Platform RBAC (mgmt VM Contributor, gallery custom role support, WVD Power On Off hook) | **partial** — mgmt SP defaulted; gallery supports custom role id; WVD principal via tfvars |
-| Wave D | Personal host pools | **open** |
+| C20 | Platform RBAC (mgmt VM Contributor, gallery custom role support, WVD Power On Off hook) | **done** — principals still tfvars (tenant-specific) |
+| Wave D | Personal host pools | **done** — 10-pool catalog (PERS-General + Packaging); Direct / start-on-connect / RDP personas |
 
 ---
 
@@ -203,12 +203,13 @@ AG `acg-DevicesLab` → `GRPG882932@nalloydsbanking.com`. APR pipeline-driven. U
 
 ---
 
-## P2 Wave D — backlog
+## P2 Wave D / hygiene — remaining
 
-- Fill `pers_host_pools`: Personal / Direct / Persistent / max 9999 / **`start_vm_on_connect = true`** / Desktop
-- labCorePriv
+- [x] Fill `pers_host_pools` catalog (10 pools; Direct / Persistent / max 9999 / start-on-connect / RDP personas)
+- labCorePriv (still out unless requested)
 - Untrack `legacy/` gitlinks from GitHub (`git rm -r --cached legacy/`)
 - Naming PENDING(TDA)
+- Deploy-time: gallery Packer MSI object IDs; WVD SP object ID + mult lab sub GUIDs
 
 ---
 
@@ -225,5 +226,5 @@ _global          → vWAN
 connectivity     → FWP stub, Hub01, Hub02 (VPN peer missing)
 mgmt             → LAW + DCE + Insights DCR; alert templates + APR/Reader; NSG/RT done (C14)
 labs             → PERS/MSH spokes; FSLogix share names OK; STA/KV/ACLs incomplete (C08–C13)
-avd              → 30 MSH HP + scaling; RDP/max sessions wrong pre-C02–C06; PERS map empty
+avd              → 30 MSH HP + scaling; 10 PERS HP catalog + personal scaling; gallery/WVD RBAC via tfvars
 ```

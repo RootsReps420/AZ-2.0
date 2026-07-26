@@ -87,7 +87,7 @@ module "hostpool" {
   custom_rdp_properties    = each.value.custom_rdp_properties
   start_vm_on_connect      = false
   # Legacy Bicep PT175H10M ≈ 175 hours (time_rotating is hour-granular)
-  token_validity_hours     = 175
+  token_validity_hours = 175
 
   scheduled_agent_updates = {
     enabled                   = true
@@ -114,8 +114,8 @@ module "scaling_plan" {
   subscription_id     = var.subscription_code
   environment         = local.env
 
-  time_zone      = "GMT Standard Time"
-  exclusion_tag  = "spExclude"
+  time_zone     = "GMT Standard Time"
+  exclusion_tag = "spExclude"
   pooled_schedules = {
     for sk in each.value.schedule_keys : sk => local.msh_schedule_catalog[sk]
   }
@@ -217,22 +217,29 @@ module "dcr_msh" {
   count  = var.law_id != null ? 1 : 0
   source = "../../../modules/platform/dcr-msh"
 
-  resource_group_name          = azurerm_resource_group.avd.name
-  location                     = local.location
-  log_analytics_workspace_id   = var.law_id
-  dce_name                     = "uks-${local.env}-vdi-avd-dce-mult-all"
-  dcr_main_name                = "uks-${local.env}-vdi-avd-dcr-mult"
-  dcr_insights_name            = "uks-${local.env}-vdi-avd-dcr-mult-vminsights"
-  dcr_fsl_name                 = "uks-${local.env}-vdi-avd-dcr-multfslp"
-  dcr_wss_name                 = "uks-${local.env}-vdi-avd-dcr-multwss"
-  tags                         = module.tags.tags
+  resource_group_name        = azurerm_resource_group.avd.name
+  location                   = local.location
+  log_analytics_workspace_id = var.law_id
+  dce_name                   = "uks-${local.env}-vdi-avd-dce-mult-all"
+  dcr_main_name              = "uks-${local.env}-vdi-avd-dcr-mult"
+  dcr_insights_name          = "uks-${local.env}-vdi-avd-dcr-mult-vminsights"
+  dcr_fsl_name               = "uks-${local.env}-vdi-avd-dcr-multfslp"
+  dcr_wss_name               = "uks-${local.env}-vdi-avd-dcr-multwss"
+  tags                       = module.tags.tags
 }
 
-# Legacy Desktop Virtualization Power On Off Contributor on AVD subscription (MSH path)
-resource "azurerm_role_assignment" "wvd_power_on_off" {
-  count = var.wvd_power_on_off_principal_id != null ? 1 : 0
+# Legacy Desktop Virtualization Power On Off Contributor — AVD broker + mult lab subs
+locals {
+  wvd_power_on_off_scopes = var.wvd_power_on_off_principal_id == null ? {} : merge(
+    { avd = var.azure_subscription_id },
+    var.wvd_power_on_off_lab_subscription_ids,
+  )
+}
 
-  scope                = "/subscriptions/${var.azure_subscription_id}"
+resource "azurerm_role_assignment" "wvd_power_on_off" {
+  for_each = local.wvd_power_on_off_scopes
+
+  scope                = "/subscriptions/${each.value}"
   role_definition_name = "Desktop Virtualization Power On Off Contributor"
   principal_id         = var.wvd_power_on_off_principal_id
 }

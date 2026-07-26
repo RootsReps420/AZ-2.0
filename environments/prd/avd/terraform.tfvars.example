@@ -9,8 +9,11 @@ subscription_code     = "vdi"
 default_max_session_limit = 16
 keyvault_unique_id        = "avdprd1" # TODO(deploy): confirm globally unique
 
+# PERS catalog (10 pools) deploys by default; set false to skip
+# enable_pers_host_pools = true
+# Override catalog (optional):
 # pers_host_pools = {
-#   "01a" = {}
+#   "001-01" = { rdp_persona = "standard" }
 # }
 
 mandatory_tags = {
@@ -20,6 +23,16 @@ mandatory_tags = {
   CMDB_AppID             = "AL17611"
 }
 
+# Gallery Packer MSI — legacy custom role GUID from gallery/prd/environment.json
 # gallery_role_assignments = {
-#   packer = { role_definition_name = "Contributor", principal_id = "REPLACE-PACKER-MSI" }
+#   packer = {
+#     principal_id       = "REPLACE-OBJECT-ID-build-bp-prd-vdi-mgmt-msi"
+#     role_definition_id = "c94a69e3-474e-44d5-8ead-08eb747e2298"
+#   }
+# }
+
+# WVD Power On Off — tenant object ID for AppId 9cdead84-a844-4324-93f2-b2e6bb768d07
+# wvd_power_on_off_principal_id = "REPLACE-WVD-SP-OBJECT-ID"
+# wvd_power_on_off_lab_subscription_ids = {
+#   "lab-01a" = "00000000-0000-0000-0000-000000000000"
 # }

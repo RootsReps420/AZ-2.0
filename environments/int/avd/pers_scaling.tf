@@ -1,6 +1,5 @@
 # environments/int/avd — PERS personal host pools + personal scaling
-# Fill var.pers_host_pools from live inventory; empty map = no PERS AVD objects.
-# Schedule template from legacy scripts params/AVD-ScalingPlans.json (personal).
+# Catalog: pers_pools.tf (PERS-General + PERS-Packaging). Schedule from AVD-ScalingPlans.json.
 
 locals {
   pers_personal_schedule = {
@@ -68,7 +67,7 @@ locals {
 }
 
 module "rg_pers_name" {
-  count  = length(var.pers_host_pools) > 0 ? 1 : 0
+  count  = length(local.pers_host_pools) > 0 ? 1 : 0
   source = "../../../modules/naming"
 
   resource_type   = "resource_group"
@@ -79,7 +78,7 @@ module "rg_pers_name" {
 }
 
 resource "azurerm_resource_group" "pers" {
-  count = length(var.pers_host_pools) > 0 ? 1 : 0
+  count = length(local.pers_host_pools) > 0 ? 1 : 0
 
   name     = module.rg_pers_name[0].name
   location = local.location
@@ -87,7 +86,7 @@ resource "azurerm_resource_group" "pers" {
 }
 
 module "workspace_pers" {
-  count  = length(var.pers_host_pools) > 0 ? 1 : 0
+  count  = length(local.pers_host_pools) > 0 ? 1 : 0
   source = "../../../modules/avd/workspace"
 
   name                = "pers"
@@ -96,11 +95,13 @@ module "workspace_pers" {
   subscription_id     = var.subscription_code
   environment         = local.env
 
-  friendly_name = "Personal VDI"
+  # Legacy pipeline workspaceFriendlyname: RTL-DESKTOPS (int) / LIVE-DESKTOPS (prd)
+  friendly_name = local.pers_workspace_friendly_name
   application_groups = {
-    for k, v in var.pers_host_pools : k => {
-      host_pool_id = module.hostpool_pers[k].hostpool_id
-      type         = "Desktop"
+    for k, v in local.pers_host_pools : k => {
+      host_pool_id  = module.hostpool_pers[k].hostpool_id
+      type          = "Desktop"
+      friendly_name = "Desktop ${k}"
     }
   }
 
@@ -109,7 +110,7 @@ module "workspace_pers" {
 
 module "hostpool_pers" {
   source   = "../../../modules/avd/hostpool"
-  for_each = var.pers_host_pools
+  for_each = local.pers_host_pools
 
   name                = "pers-${each.key}"
   resource_group_name = azurerm_resource_group.pers[0].name
@@ -117,9 +118,19 @@ module "hostpool_pers" {
   subscription_id     = var.subscription_code
   environment         = local.env
 
+  # Legacy create defaults: Personal / Direct / Persistent / max 9999 / startVMOnConnect true
   host_pool_type                   = "Personal"
   load_balancer_type               = "Persistent"
-  personal_desktop_assignment_type = try(each.value.assignment_type, "Automatic")
+  personal_desktop_assignment_type = try(each.value.assignment_type, "Direct")
+  preferred_app_group_type         = "Desktop"
+  maximum_sessions_allowed         = 9999
+  start_vm_on_connect              = true
+  # PSM1 default tokenExpirationHours = 240 → PT240H10M
+  token_validity_hours  = 240
+  custom_rdp_properties = local.pers_rdp[try(each.value.rdp_persona, "standard")]
+  description           = try(each.value.description, "PERS ${each.key}")
+  friendly_name         = try(each.value.friendly_name, "pers-${each.key}")
+  validate_environment  = try(each.value.validate_environment, false)
 
   log_analytics_workspace_id = var.law_id
   tags                       = module.tags.tags
@@ -127,7 +138,7 @@ module "hostpool_pers" {
 
 module "scaling_plan_pers" {
   source   = "../../../modules/avd/scalingplan"
-  for_each = var.pers_host_pools
+  for_each = local.pers_host_pools
 
   name                = "pers-${each.key}"
   resource_group_name = azurerm_resource_group.pers[0].name

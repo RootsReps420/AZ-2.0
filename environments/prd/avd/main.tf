@@ -87,7 +87,7 @@ module "hostpool" {
   custom_rdp_properties    = each.value.custom_rdp_properties
   start_vm_on_connect      = false
   # Legacy Bicep PT175H10M ≈ 175 hours (time_rotating is hour-granular)
-  token_validity_hours     = 175
+  token_validity_hours = 175
 
   scheduled_agent_updates = {
     enabled                   = true
@@ -227,10 +227,18 @@ module "dcr_msh" {
   tags                       = module.tags.tags
 }
 
-resource "azurerm_role_assignment" "wvd_power_on_off" {
-  count = var.wvd_power_on_off_principal_id != null ? 1 : 0
+# Legacy Desktop Virtualization Power On Off Contributor — AVD broker + mult lab subs
+locals {
+  wvd_power_on_off_scopes = var.wvd_power_on_off_principal_id == null ? {} : merge(
+    { avd = var.azure_subscription_id },
+    var.wvd_power_on_off_lab_subscription_ids,
+  )
+}
 
-  scope                = "/subscriptions/${var.azure_subscription_id}"
+resource "azurerm_role_assignment" "wvd_power_on_off" {
+  for_each = local.wvd_power_on_off_scopes
+
+  scope                = "/subscriptions/${each.value}"
   role_definition_name = "Desktop Virtualization Power On Off Contributor"
   principal_id         = var.wvd_power_on_off_principal_id
 }

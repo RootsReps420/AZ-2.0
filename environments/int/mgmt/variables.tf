@@ -66,14 +66,60 @@ variable "alert_action_group_email" {
 }
 
 variable "enable_alert_uami" {
-  description = "Create custom-log-alerts-msi (Reader on lab subs assigned when alert rules land)."
+  description = "Create custom-log-alerts-msi and assign Reader on alert-scoped subscriptions."
   type        = bool
   default     = true
+}
+
+variable "alert_mult_subscription_ids" {
+  description = "Multi-session lab subscriptions (key = short name used in alert/APR names, value = GUID)."
+  type        = map(string)
+  default     = {}
+}
+
+variable "alert_pers_subscription_ids" {
+  description = "Personal lab subscriptions (key = short name, value = GUID)."
+  type        = map(string)
+  default     = {}
+}
+
+variable "alert_broker_subscription_ids" {
+  description = "AVD broker (and any extra) subscriptions for Reader + APR + activity-log alerts."
+  type        = map(string)
+  default     = {}
+}
+
+variable "alert_fslogix_file_shares" {
+  description = "FSLogix profile shares for capacity metric alerts (from labs STA outputs). Key arbitrary; exclude admin 999."
+  type = map(object({
+    storage_account_id = string
+    share_name         = string
+    quota_gb           = number
+  }))
+  default = {}
+}
+
+variable "apr_enabled" {
+  description = "Enable alert processing rule suppression (legacy pipeline window)."
+  type        = bool
+  default     = false
+}
+
+variable "apr_effective_from" {
+  description = "APR schedule start (ISO datetime) when apr_enabled is true."
+  type        = string
+  default     = null
+}
+
+variable "apr_effective_until" {
+  description = "APR schedule end (ISO datetime) when apr_enabled is true."
+  type        = string
+  default     = null
 }
 
 variable "devops_vm_contributor_principal_id" {
   description = "Legacy SP-R-VDI-ADA-VMC-01 object ID (Virtual Machine Contributor on mgmt subscription). Null skips."
   type        = string
   # legacy/platform/.../params/int/01/mgmt/params-access.json
-  default     = "57f1c9ac-b33d-404a-8a06-a9cee526964a"
+  default = "57f1c9ac-b33d-404a-8a06-a9cee526964a"
 }

@@ -15,3 +15,18 @@ mandatory_tags = {
 # VERIFIED: legacy net_mgmt_vnetAddressSpace / net_mgmt_subnetAgents
 mgmt_address_space = ["10.170.241.64/26"]
 dns_servers        = ["10.19.96.1", "10.19.97.1"]
+
+# Alerts — subscription scopes for Reader / APR / activity-log / VM+quota queries
+# alert_mult_subscription_ids = { "lab-01a" = "00000000-0000-0000-0000-000000000000" }
+# alert_pers_subscription_ids = { "pers-01a" = "00000000-0000-0000-0000-000000000000" }
+# alert_broker_subscription_ids = { "avd" = "00000000-0000-0000-0000-000000000000" }
+# alert_fslogix_file_shares = {
+#   "001-00" = {
+#     storage_account_id = "/subscriptions/.../storageAccounts/uksprdvdimultilb01apf001"
+#     share_name         = "profiles-001-00"
+#     quota_gb           = 100
+#   }
+# }
+# apr_enabled         = false
+# apr_effective_from  = "2026-01-01T00:00:00"
+# apr_effective_until = "2026-01-02T00:00:00"

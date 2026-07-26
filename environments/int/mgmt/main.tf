@@ -41,12 +41,12 @@ module "management" {
   environment         = local.env
   unique_id           = "01"
 
-  law_retention_in_days                = 30
+  law_retention_in_days = 30
   # Legacy int law params: p_resourcePermissions = true
-  law_allow_resource_only_permissions  = true
-  create_data_collection_endpoint      = true
+  law_allow_resource_only_permissions = true
+  create_data_collection_endpoint     = true
   # Keep thin Insights DCR here; full MSH rule set lives in avd (modules/platform/dcr-msh)
-  create_avd_insights_dcr              = true
+  create_avd_insights_dcr = true
 
   action_groups = {
     devices_lab = {
@@ -59,6 +59,9 @@ module "management" {
       }
     }
   }
+
+  scheduled_query_alerts = local.scheduled_query_alerts
+  metric_alerts          = local.metric_alerts
 
   tags = module.tags.tags
 }
@@ -104,13 +107,13 @@ module "spoke_mgmt" {
       # Legacy params-netsec: deny east-west using AgentsSubnet CIDR (not VirtualNetwork tag)
       security_rules = {
         "deny-subnet-inbound-subnet" = {
-          priority                   = 4000
-          direction                  = "Inbound"
-          access                     = "Deny"
-          protocol                   = "*"
-          source_port_range          = "*"
-          destination_port_range     = "*"
-          source_address_prefixes    = var.mgmt_address_space
+          priority                     = 4000
+          direction                    = "Inbound"
+          access                       = "Deny"
+          protocol                     = "*"
+          source_port_range            = "*"
+          destination_port_range       = "*"
+          source_address_prefixes      = var.mgmt_address_space
           destination_address_prefixes = var.mgmt_address_space
         }
       }

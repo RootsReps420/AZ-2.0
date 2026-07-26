@@ -142,18 +142,28 @@ variable "action_groups" {
 variable "metric_alerts" {
   description = "Metric alerts keyed by descriptor. action_group_keys reference keys in var.action_groups."
   type = map(object({
-    scopes            = list(string)
-    description       = optional(string, "")
-    severity          = optional(number, 3)
-    frequency         = optional(string, "PT5M")
-    window_size       = optional(string, "PT15M")
-    action_group_keys = optional(list(string), [])
+    scopes                   = list(string)
+    description              = optional(string, "")
+    severity                 = optional(number, 3)
+    frequency                = optional(string, "PT5M")
+    window_size              = optional(string, "PT15M")
+    enabled                  = optional(bool, true)
+    auto_mitigate            = optional(bool, true)
+    target_resource_type     = optional(string)
+    target_resource_location = optional(string)
+    display_name             = optional(string) # override naming-module name when set
+    action_group_keys        = optional(list(string), [])
     criteria = object({
       metric_namespace = string
       metric_name      = string
       aggregation      = string
       operator         = string
       threshold        = number
+      dimensions = optional(list(object({
+        name     = string
+        operator = string
+        values   = list(string)
+      })), [])
     })
   }))
   default = {}
@@ -176,17 +186,25 @@ variable "activity_log_alerts" {
 }
 
 variable "scheduled_query_alerts" {
-  description = "Scheduled query (log) alerts keyed by descriptor. Scoped to this module's workspace. action_group_keys reference keys in var.action_groups."
+  description = "Scheduled query (log) alerts keyed by descriptor. action_group_keys reference keys in var.action_groups."
   type = map(object({
-    query                   = string
-    severity                = optional(number, 3)
-    evaluation_frequency    = optional(string, "PT5M")
-    window_duration         = optional(string, "PT15M")
-    time_aggregation_method = optional(string, "Count")
-    threshold               = optional(number, 0)
-    operator                = optional(string, "GreaterThan")
-    description             = optional(string, "")
-    action_group_keys       = optional(list(string), [])
+    query                             = string
+    severity                          = optional(number, 3)
+    evaluation_frequency              = optional(string, "PT5M")
+    window_duration                   = optional(string, "PT15M")
+    time_aggregation_method           = optional(string, "Count")
+    threshold                         = optional(number, 0)
+    operator                          = optional(string, "GreaterThan")
+    description                       = optional(string, "")
+    enabled                           = optional(bool, true)
+    auto_mitigation_enabled           = optional(bool, true)
+    mute_actions_after_alert_duration = optional(string)       # e.g. PT24H; null = no mute
+    scopes                            = optional(list(string)) # default: this module's LAW
+    action_group_keys                 = optional(list(string), [])
+    identity_ids                      = optional(list(string), []) # user-assigned identities (quota ARG queries)
+    metric_measure_column             = optional(string)
+    resource_id_column                = optional(string)
+    display_name                      = optional(string) # override naming-module name when set
   }))
   default = {}
 }

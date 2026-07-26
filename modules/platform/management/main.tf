@@ -96,15 +96,15 @@ module "query_alert_names" {
 # ---------------------------------------------------------------------------
 
 resource "azurerm_log_analytics_workspace" "this" {
-  name                               = module.law_name.name
-  resource_group_name                = var.resource_group_name
-  location                           = var.location
-  sku                                = var.law_sku
-  retention_in_days                  = var.law_retention_in_days
-  daily_quota_gb                     = var.law_daily_quota_gb
+  name                = module.law_name.name
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  sku                 = var.law_sku
+  retention_in_days   = var.law_retention_in_days
+  daily_quota_gb      = var.law_daily_quota_gb
   # Legacy p_resourcePermissions / enableLogAccessUsingOnlyResourcePermissions
-  allow_resource_only_permissions    = var.law_allow_resource_only_permissions
-  tags                               = var.tags
+  allow_resource_only_permissions = var.law_allow_resource_only_permissions
+  tags                            = var.tags
 }
 
 # ---------------------------------------------------------------------------
@@ -196,14 +196,18 @@ resource "azurerm_monitor_action_group" "this" {
 resource "azurerm_monitor_metric_alert" "this" {
   for_each = var.metric_alerts
 
-  name                = module.metric_alert_names[each.key].name
-  resource_group_name = var.resource_group_name
-  scopes              = each.value.scopes
-  description         = each.value.description
-  severity            = each.value.severity
-  frequency           = each.value.frequency
-  window_size         = each.value.window_size
-  tags                = var.tags
+  name                     = coalesce(each.value.display_name, module.metric_alert_names[each.key].name)
+  resource_group_name      = var.resource_group_name
+  scopes                   = each.value.scopes
+  description              = each.value.description
+  severity                 = each.value.severity
+  frequency                = each.value.frequency
+  window_size              = each.value.window_size
+  enabled                  = each.value.enabled
+  auto_mitigate            = each.value.auto_mitigate
+  target_resource_type     = each.value.target_resource_type
+  target_resource_location = each.value.target_resource_location
+  tags                     = var.tags
 
   criteria {
     metric_namespace = each.value.criteria.metric_namespace
@@ -211,6 +215,15 @@ resource "azurerm_monitor_metric_alert" "this" {
     aggregation      = each.value.criteria.aggregation
     operator         = each.value.criteria.operator
     threshold        = each.value.criteria.threshold
+
+    dynamic "dimension" {
+      for_each = each.value.criteria.dimensions
+      content {
+        name     = dimension.value.name
+        operator = dimension.value.operator
+        values   = dimension.value.values
+      }
+    }
   }
 
   dynamic "action" {
@@ -257,21 +270,34 @@ resource "azurerm_monitor_activity_log_alert" "this" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "this" {
   for_each = var.scheduled_query_alerts
 
-  name                 = module.query_alert_names[each.key].name
-  resource_group_name  = var.resource_group_name
-  location             = var.location
-  scopes               = [azurerm_log_analytics_workspace.this.id]
-  severity             = each.value.severity
-  evaluation_frequency = each.value.evaluation_frequency
-  window_duration      = each.value.window_duration
-  description          = each.value.description
-  tags                 = var.tags
+  name                              = coalesce(each.value.display_name, module.query_alert_names[each.key].name)
+  resource_group_name               = var.resource_group_name
+  location                          = var.location
+  scopes                            = coalesce(each.value.scopes, [azurerm_log_analytics_workspace.this.id])
+  severity                          = each.value.severity
+  evaluation_frequency              = each.value.evaluation_frequency
+  window_duration                   = each.value.window_duration
+  description                       = each.value.description
+  enabled                           = each.value.enabled
+  auto_mitigation_enabled           = each.value.auto_mitigation_enabled
+  mute_actions_after_alert_duration = each.value.mute_actions_after_alert_duration
+  tags                              = var.tags
+
+  dynamic "identity" {
+    for_each = length(each.value.identity_ids) > 0 ? [1] : []
+    content {
+      type         = "UserAssigned"
+      identity_ids = each.value.identity_ids
+    }
+  }
 
   criteria {
     query                   = each.value.query
     time_aggregation_method = each.value.time_aggregation_method
     threshold               = each.value.threshold
     operator                = each.value.operator
+    metric_measure_column   = each.value.metric_measure_column
+    resource_id_column      = each.value.resource_id_column
 
     failing_periods {
       minimum_failing_periods_to_trigger_alert = 1

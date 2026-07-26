@@ -1,6 +1,6 @@
 # Gap analysis — legacy Azure 1.0 vs Terraform
 
-**Status:** In progress — Waves A/B done; Wave C started (Log Analytics, data collection, alerts shell, RBAC hooks); alert rule templates + personal host pools still open.  
+**Status:** In progress — Waves A/B done; Wave C mostly done (LAW/DCR/alerts C16–C19); Wave D personal host pools still open.  
 **Date:** 2026-07-26  
 **Scope:** TF-worthy deployables in legacy vs `environments/{int,prd}` + `modules/**`.
 
@@ -124,8 +124,8 @@ Re-checked against: all **30** `legacy/mult/.../params/hostpools/*.json`, `RDPPr
 | C15 | validate labs+mgmt + READMEs | **partial** — validate green; README polish open |
 | C16 | LAW resource-only permissions int/prd | **done** |
 | C17 | MSH data collection rules + custom tables | **done** (definitions; VM associations stay PowerShell) |
-| C18 | Alert action group + alert managed identity shell | **done** (rule templates still open) |
-| C19 | Full alert rule templates | **open** |
+| C18 | Alert action group + alert managed identity shell | **done** |
+| C19 | Full alert rule templates + APR + UAMI Reader | **done** (wire sub IDs + FSLogix share scopes in tfvars at deploy) |
 | C20 | Platform RBAC (mgmt VM Contributor, gallery custom role support, WVD Power On Off hook) | **partial** — mgmt SP defaulted; gallery supports custom role id; WVD principal via tfvars |
 | Wave D | Personal host pools | **open** |
 
@@ -223,7 +223,7 @@ AG `acg-DevicesLab` → `GRPG882932@nalloydsbanking.com`. APR pipeline-driven. U
 ```text
 _global          → vWAN
 connectivity     → FWP stub, Hub01, Hub02 (VPN peer missing)
-mgmt             → LAW + DCE + Insights DCR; alerts empty; NSG/RT gaps (C14)
+mgmt             → LAW + DCE + Insights DCR; alert templates + APR/Reader; NSG/RT done (C14)
 labs             → PERS/MSH spokes; FSLogix share names OK; STA/KV/ACLs incomplete (C08–C13)
 avd              → 30 MSH HP + scaling; RDP/max sessions wrong pre-C02–C06; PERS map empty
 ```

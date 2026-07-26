@@ -41,7 +41,7 @@ module "management" {
   environment         = local.env
   unique_id           = "01"
 
-  law_retention_in_days               = 30
+  law_retention_in_days = 30
   # Legacy prd law params: p_resourcePermissions = false
   law_allow_resource_only_permissions = false
   create_data_collection_endpoint     = true
@@ -58,6 +58,9 @@ module "management" {
       }
     }
   }
+
+  scheduled_query_alerts = local.scheduled_query_alerts
+  metric_alerts          = local.metric_alerts
 
   tags = module.tags.tags
 }

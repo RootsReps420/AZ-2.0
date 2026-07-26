@@ -23,6 +23,11 @@ variable "hub01_id" {
   type        = string
 }
 
+variable "hub01_firewall_private_ip" {
+  description = "Hub01 AZFW private IP for AgentsSubnet default-to-firewall RT (connectivity output)."
+  type        = string
+}
+
 variable "mandatory_tags" {
   type = object({
     costCentre             = string

@@ -442,7 +442,7 @@ Values below are **defaults in code** or **tfvars.example**. Anything marked ⚠
 | ------------------------ | ------------------------------------------------ | ------------------------------------------------ |
 | `subscription_code`      | `vdi`                                            | `vdi`                                            |
 | MSH host pools           | **30** (`001-00` … `999-02`)                     | same map                                         |
-| Max sessions             | **16**                                           | **16**                                           |
+| Max sessions             | **per-pool 6–18** (from legacy hostpool JSON; none are 16) | same                                             |
 | Load balance             | BreadthFirst                                     | BreadthFirst                                     |
 | Scaling                  | 1 standard SP + 1 decom SP **per** pool          | same                                             |
 | BU **005**               | special `*_005` schedules                        | same                                             |

@@ -1,9 +1,24 @@
-# FSLogix file shares — PRD mirrors legacy hostpool JSON quotas exactly.
+# FSLogix file share quotas — PRD mirrors legacy hostpool JSON quotas exactly.
 # Source: legacy/mult/vdi-mult/params/hostpools/*.json (fileShareQuota).
-# Share names: profiles-{bu}-{pool}; redirection 100 GB (legacy env override).
+# Placement onto per-BU STAs is in fslogix_stas.tf.
 # 005-01 = 51200 GB is intentional.
 
 locals {
+  fslogix_profile_pools = [
+    "001-00", "001-01", "001-02",
+    "002-00", "002-01", "002-02",
+    "003-00", "003-01", "003-02",
+    "004-00", "004-01", "004-02",
+    "005-00", "005-01", "005-02",
+    "006-00", "006-01", "006-02",
+    "007-00", "007-01", "007-02",
+    "008-00", "008-01", "008-02",
+    "009-00", "009-01", "009-02",
+    "999-00", "999-01", "999-02",
+  ]
+
+  fslogix_redirection_quota_gb = 100
+
   fslogix_profile_quotas = {
     "001-00" = 100
     "001-01" = 2500
@@ -37,8 +52,7 @@ locals {
     "999-02" = 100
   }
 
-  fslogix_shares = merge(
-    { for pool, gb in local.fslogix_profile_quotas : "profiles-${pool}" => { quota_gb = gb } },
-    { "redirection" = { quota_gb = 100 } },
-  )
+  fslogix_share_quotas = {
+    for pool, gb in local.fslogix_profile_quotas : pool => { quota_gb = gb }
+  }
 }

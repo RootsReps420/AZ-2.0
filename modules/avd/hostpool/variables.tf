@@ -102,14 +102,28 @@ variable "custom_rdp_properties" {
 # ---------------------------------------------------------------------------
 
 variable "token_validity_hours" {
-  description = "Validity window of the session-host registration token, in hours. The token rotates automatically on this cadence. Azure permits between 1 hour and 30 days (720 hours)."
+  description = "Validity window of the session-host registration token, in hours. The token rotates automatically on this cadence. Azure permits between 1 hour and 30 days (720 hours). Legacy Bicep uses PT175H10M (~175h)."
   type        = number
-  default     = 24
+  default     = 175
 
   validation {
     condition     = var.token_validity_hours >= 1 && var.token_validity_hours <= 720
     error_message = "token_validity_hours must be between 1 and 720 (1 hour to 30 days)."
   }
+}
+
+variable "scheduled_agent_updates" {
+  description = "Optional scheduled AVD agent update window. Legacy MSH: enabled, GMT Standard Time, Saturday 01:00, use_session_host_timezone false."
+  type = object({
+    enabled                   = optional(bool, true)
+    timezone                  = optional(string, "GMT Standard Time")
+    use_session_host_timezone = optional(bool, false)
+    schedules = list(object({
+      day_of_week = string
+      hour_of_day = number
+    }))
+  })
+  default = null
 }
 
 # ---------------------------------------------------------------------------

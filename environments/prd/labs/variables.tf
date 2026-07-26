@@ -50,6 +50,18 @@ variable "enable_fslogix" {
   default = true
 }
 
+variable "agents_subnet_id" {
+  description = "Mgmt AgentsSubnet resource ID for FSLogix/KV network ACLs (legacy allow list). Required for legacy-exact Deny ACL model."
+  type        = string
+  default     = null
+}
+
+variable "law_id" {
+  description = "Log Analytics workspace ID for FSLogix file diagnostics (optional until mgmt LAW exists)."
+  type        = string
+  default     = null
+}
+
 # VERIFIED from legacy platform params/prd/config.yml — pers labs (VNet == AVD subnet)
 variable "pers_spokes" {
   description = "PERS lab spokes keyed by lab id (01a, 01b, …)."

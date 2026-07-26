@@ -54,10 +54,14 @@ module "workspace" {
   environment         = local.env
   unique_id           = "01"
 
+  # Legacy params/prd/environment.json workspaceFriendlyName
+  friendly_name = "Shared Desktops"
+
   application_groups = {
     for k, hp in module.hostpool : "dag-${k}" => {
-      host_pool_id = hp.hostpool_id
-      type         = "Desktop"
+      host_pool_id  = hp.hostpool_id
+      type          = "Desktop"
+      friendly_name = local.msh_host_pools[k].app_group_friendly_name
     }
   }
 
@@ -75,9 +79,25 @@ module "hostpool" {
   environment         = local.env
   # unique_id omitted — description already includes bu-pool
 
-  host_pool_type     = "Pooled"
-  load_balancer_type = "BreadthFirst"
-  maximum_sessions_allowed = var.default_max_session_limit
+  host_pool_type           = "Pooled"
+  load_balancer_type       = "BreadthFirst"
+  maximum_sessions_allowed = each.value.maximum_sessions_allowed
+  validate_environment     = each.value.validate_environment
+  description              = each.value.description
+  custom_rdp_properties    = each.value.custom_rdp_properties
+  start_vm_on_connect      = false
+  # Legacy Bicep PT175H10M ≈ 175 hours (time_rotating is hour-granular)
+  token_validity_hours     = 175
+
+  scheduled_agent_updates = {
+    enabled                   = true
+    timezone                  = "GMT Standard Time"
+    use_session_host_timezone = false
+    schedules = [{
+      day_of_week = "Saturday"
+      hour_of_day = 1
+    }]
+  }
 
   log_analytics_workspace_id = var.law_id
   tags                       = module.tags.tags
@@ -94,7 +114,8 @@ module "scaling_plan" {
   subscription_id     = var.subscription_code
   environment         = local.env
 
-  time_zone = "GMT Standard Time"
+  time_zone     = "GMT Standard Time"
+  exclusion_tag = "spExclude"
   pooled_schedules = {
     for sk in each.value.schedule_keys : sk => local.msh_schedule_catalog[sk]
   }
@@ -105,7 +126,8 @@ module "scaling_plan" {
     }
   }
 
-  tags = module.tags.tags
+  log_analytics_workspace_id = var.law_id
+  tags                       = module.tags.tags
 }
 
 # Decom sibling plans — catalog from scalingPlanSchedulesDecom.json
@@ -119,7 +141,8 @@ module "scaling_plan_decom" {
   subscription_id     = var.subscription_code
   environment         = local.env
 
-  time_zone = "GMT Standard Time"
+  time_zone     = "GMT Standard Time"
+  exclusion_tag = "spExclude"
   pooled_schedules = {
     standard_week_schedule = local.msh_decom_schedule
   }
@@ -130,7 +153,8 @@ module "scaling_plan_decom" {
     }
   }
 
-  tags = module.tags.tags
+  log_analytics_workspace_id = var.law_id
+  tags                       = module.tags.tags
 }
 
 # ---------------------------------------------------------------------------

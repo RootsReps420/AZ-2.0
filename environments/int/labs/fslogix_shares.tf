@@ -1,6 +1,6 @@
-# FSLogix file shares — INT is RTL (reduced test lab): all profile shares 100 GB.
+# FSLogix file share quotas — INT is RTL (reduced test lab): all profile shares 100 GB.
 # Share names match legacy Mult_DeployAVD profiles-{bu}-{pool}; redirection 100 GB.
-# Quotas deliberately NOT copied from PRD multi-TB sizes.
+# Placement onto per-BU STAs is in fslogix_stas.tf.
 
 locals {
   fslogix_profile_pools = [
@@ -16,8 +16,9 @@ locals {
     "999-00", "999-01", "999-02",
   ]
 
-  fslogix_shares = merge(
-    { for pool in local.fslogix_profile_pools : "profiles-${pool}" => { quota_gb = 100 } },
-    { "redirection" = { quota_gb = 100 } },
-  )
+  fslogix_redirection_quota_gb = 100
+
+  fslogix_share_quotas = {
+    for pool in local.fslogix_profile_pools : pool => { quota_gb = 100 }
+  }
 }

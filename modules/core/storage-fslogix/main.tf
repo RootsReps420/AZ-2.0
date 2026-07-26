@@ -23,7 +23,7 @@ module "sta_name" {
 }
 
 resource "azurerm_storage_account" "this" {
-  name                = module.sta_name.name
+  name                = coalesce(var.name_override, module.sta_name.name)
   resource_group_name = var.resource_group_name
   location            = var.location
 
@@ -31,9 +31,11 @@ resource "azurerm_storage_account" "this" {
   account_kind             = var.account_kind
   account_replication_type = var.account_replication_type
 
-  https_traffic_only_enabled    = true
-  min_tls_version               = var.min_tls_version
-  public_network_access_enabled = var.public_network_access_enabled
+  https_traffic_only_enabled        = true
+  min_tls_version                   = var.min_tls_version
+  public_network_access_enabled     = var.public_network_access_enabled
+  shared_access_key_enabled         = var.shared_access_key_enabled
+  infrastructure_encryption_enabled = var.infrastructure_encryption_enabled
 
   dynamic "identity" {
     for_each = var.identity_type == null ? [] : [var.identity_type]
@@ -77,6 +79,17 @@ resource "azurerm_storage_account" "this" {
     retention_policy {
       days = var.share_soft_delete_days
     }
+
+    dynamic "smb" {
+      for_each = var.smb == null ? [] : [var.smb]
+      content {
+        versions                        = smb.value.versions
+        authentication_types            = smb.value.authentication_types
+        kerberos_ticket_encryption_type = smb.value.kerberos_ticket_encryption_type
+        channel_encryption_type         = smb.value.channel_encryption_type
+        multichannel_enabled            = smb.value.multichannel_enabled
+      }
+    }
   }
 
   tags = var.tags
@@ -99,4 +112,26 @@ resource "azurerm_storage_share" "this" {
   storage_account_id = azurerm_storage_account.this.id
   quota              = each.value.quota_gb
   access_tier        = each.value.access_tier
+}
+
+# Legacy sa_fslogix: StorageRead/Write/Delete + Transaction → LAW (AzureDiagnostics)
+resource "azurerm_monitor_diagnostic_setting" "file" {
+  count = var.log_analytics_workspace_id != null ? 1 : 0
+
+  name                       = "${azurerm_storage_account.this.name}-filediagnostics"
+  target_resource_id         = "${azurerm_storage_account.this.id}/fileServices/default"
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+
+  enabled_log {
+    category = "StorageRead"
+  }
+  enabled_log {
+    category = "StorageWrite"
+  }
+  enabled_log {
+    category = "StorageDelete"
+  }
+  enabled_metric {
+    category = "Transaction"
+  }
 }

@@ -33,6 +33,7 @@ resource "azurerm_virtual_desktop_scaling_plan" "this" {
   friendly_name       = var.friendly_name
   description         = var.description
   time_zone           = var.time_zone
+  exclusion_tag       = var.exclusion_tag
   tags                = var.tags
 
   dynamic "host_pool" {
@@ -84,5 +85,18 @@ resource "azapi_resource" "personal_schedule" {
 
   body = {
     properties = each.value.properties
+  }
+}
+
+# Legacy vdi_hp_resources.bicep: categoryGroup allLogs → secOps LAW
+resource "azurerm_monitor_diagnostic_setting" "scaling_plan" {
+  count = var.log_analytics_workspace_id != null ? 1 : 0
+
+  name                       = "diag-to-law"
+  target_resource_id         = azurerm_virtual_desktop_scaling_plan.this.id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+
+  enabled_log {
+    category_group = "allLogs"
   }
 }

@@ -16,5 +16,7 @@ mandatory_tags = {
 
 dns_servers    = ["10.19.96.1", "10.19.97.1"]
 enable_fslogix = true
+# agents_subnet_id = "/subscriptions/.../subnets/AgentsSubnet" # from mgmt spoke_mgmt output
+# law_id           = "/subscriptions/.../workspaces/uks-int-vdi-avd-logs-law-01"
 
 # Defaults in variables.tf are VERIFIED from legacy int config — override only if needed.

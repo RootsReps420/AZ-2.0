@@ -1,10 +1,11 @@
 # Gap analysis — legacy Azure 1.0 vs Terraform
 
-**Status:** Documented — remediation waves **under review** (do not implement until approved).  
-**Date:** 2026-07-24  
+**Status:** In progress — Wave A (C01–C07) done; Wave B partial (C08/C09/C13/C14 done; C10 CMK, C11 KVs, C12 PERS blob still open); Wave C/D backlog.  
+**Date:** 2026-07-26 (source-verified; execution started)  
 **Scope:** TF-worthy deployables in legacy vs `environments/{int,prd}` + `modules/**`.
 
-**Companion:** [03-cursor-handoff.md](03-cursor-handoff.md) · [02-azure-1.0-to-terraform-migration.md](02-azure-1.0-to-terraform-migration.md)
+**Companion:** [03-cursor-handoff.md](03-cursor-handoff.md) · [02-azure-1.0-to-terraform-migration.md](02-azure-1.0-to-terraform-migration.md)  
+**Working plan:** Cursor `exact_legacy_tf_parity_22b2ce4a` (supersedes first-pass gap-audit plan).
 
 ---
 
@@ -22,206 +23,193 @@
 - Agent VMSS
 - Azure Policy initiatives (full Secure-Hub FW rules workstream)
 - Private Endpoints / Private DNS (legacy 1.0 never had them)
+- MSH 3-rule UDR redesign vs classic `default-to-firewall` (post-vWAN choice)
 
-**Already at good parity (recent work):**
+**Post-vWAN DNS (keep):** lab/mgmt spokes use corporate DNS `10.19.96.1` / `10.19.97.1`.
 
-- PERS/MSH NSG custom rules (legacy-exact, including 01i RPA / 01k–01l thin)
+**Already at good parity:**
+
+- PERS/MSH NSG custom rules (incl. 01i RPA / 01k–01l thin)
 - PERS `default-to-firewall` route table
 - MSH 3-rule UDR scaffold
-- FSLogix **share names/quotas** (int RTL 100 GB; prd hostpool quotas incl. 005-01 = 51200)
+- FSLogix **share names/quotas** (int RTL 100 GB; prd hostpool quotas incl. 005-01 = 51200) — **placement** still wrong (1 STA)
 - MSH 30 host pools + per-BU scaling/decom catalog
 - Gallery ~50 image definitions
 - Hub shells + empty/stub firewall policy
+- MSH Pooled / BreadthFirst / Desktop / `startVMOnConnect=false`
 
 ---
 
-## Verdict
+## Source verification (2026-07-26)
 
-Scaffold covers the **shape** of the platform, but several **legacy-exact** settings that Terraform should own are still missing or incorrect — same class of miss as the empty NSGs / wrong single `profiles` 5120 GB share found earlier.
+Re-checked against: all **30** `legacy/mult/.../params/hostpools/*.json`, `RDPProperties.json`, `vdi_hp_resources.bicep`, `vdi_workspace.bicep`, `sa_fslogix.bicep` / `rsg_storage.bicep`, lab/mgmt `params-netsec.json`, `params/*/01/law|alerts|mgmt`, `scripts/.../New-VDIAVDHostpool*` + `VDI-New-Hostpool-Appgroup-Workspace.bicep`, `vdi_dcr.bicep`, `access.bicep`, `vdi_sub_roles.bicep`, `gallery_roles.bicep`.
 
-```mermaid
-flowchart TB
-  subgraph ok [At parity or close]
-    nsg[NSG rules]
-    persRt[PERS default-to-firewall]
-    shares[FSLogix share quotas]
-    mshHp[30 MSH pools + scaling]
-    gallery[Gallery definitions]
-  end
-  subgraph p0 [P0 wrong or missing]
-    maxSess[Per-pool max sessions / RDP / validate]
-    multiSta[Multi-STA FSLogix + ACLs + CMK]
-    labKv[Lab Key Vaults + PERS blob STA]
-    svcEp[Subnet service endpoints]
-  end
-  subgraph p1 [P1 module exists empty]
-    alerts[Alerts APR UAMI]
-    dcr[Multi-DCR custom tables]
-    rbac[Sub/RG/gallery RBAC]
-    hpDiag[HP/scaling diag wiring]
-  end
-  subgraph p2 [P2 deferred known]
-    fwp[FWP rules to Policy]
-    vpn[Hub02 VPN peer]
-    persAvd[PERS host pool inventory]
-    priv[labCorePriv]
-  end
-```
+### Verdict legend
 
----
-
-## 0. Repo hygiene — `legacy/` on GitHub
-
-**Finding:** [`.gitignore`](../../.gitignore) already has `legacy/`, but the remote can still show nested **gitlinks** (mode `160000`, no `.gitmodules`):
-
-- `legacy/images/vdi-images`
-- `legacy/initiatives/vdi-initiatives`
-- `legacy/libraries/vdi-libraries`
-- `legacy/mult/vdi-mult`
-- `legacy/pers/vdi-core-pers`
-- `legacy/platform/vdi-platform`
-- `legacy/scripts/vdi-scripts`
-
-Ignore rules do not untrack paths already in the index.
-
-**When approved:**
-
-```bash
-git rm -r --cached legacy/
-# commit + push when asked — keeps local working trees for comparison
-```
-
----
-
-## P0 — Wrong or missing (would ship incorrect/incomplete infra)
-
-### 1. MSH host-pool settings are not legacy-exact
-
-[`environments/int/avd/main.tf`](../../environments/int/avd/main.tf) (and prd) apply **one** `maximum_sessions_allowed = 16` and **no** `custom_rdp_properties` / per-pool `validate_environment` / scheduled agent updates.
-
-Source: `legacy/mult/vdi-mult/params/hostpools/uks-EEE-vdi-avd-hpl-mult-*.json` + `params/RDPProperties.json`.
-
-| Gap | Legacy | TF today |
-|---|---|---|
-| Max sessions | **6–18 per pool** (e.g. 001-00=6, 001-01=10, 003-01=18) | Blanket **16** |
-| RDP profile | Per-pool `MULT-standardV2` / `printcopypasteV2` / `allV2` / `SSO*` | `null` (Azure defaults) |
-| `validationEnvironment` | `true` on many `-00` canaries | default / unset |
-| `startVMOnConnect` | `false` everywhere sampled | module default `false` (OK) |
-| Agent update windows | Scheduled Sat 01:00 GMT | **not in** [`modules/avd/hostpool`](../../modules/avd/hostpool/main.tf) |
-
-**Verified per-pool max / RDP (sample):**
-
-| Pool | max | rdp | validate |
-|---|---|---|---|
-| 001-00 | 6 | MULT-standardV2 | true |
-| 001-01 | 10 | MULT-standardV2 | false |
-| 001-02 | 6 | MULT-printcopypasteV2 | false |
-| 003-01 | 18 | MULT-standardV2 | false |
-| 005-01 | 18 | MULT-standardV2 | false |
-| 999-01 | 15 | MULT-SSOstandardV2 | false |
-
-**Fix direction (Wave A):** Extend `local.msh_host_pools` with max sessions, RDP string, validate flag; wire into `module.hostpool`; add `scheduled_agent_updates` if azurerm supports it.
-
-### 2. FSLogix storage shape is still incomplete
-
-Share **quotas/names** were fixed; **account layout** was not.
-
-| Gap | Legacy | TF today |
-|---|---|---|
-| STA count | **Per-BU** accounts (`p_FSLogixSta`: 01a → 001/002/003/004/008/009; 01b → 005/006/007/999) | **One** STA for all shares |
-| SKU / auth | Premium_ZRS + AAD Kerberos domain GUID | Premium FileStorage; AADKERB type only (no domain GUID in labs) |
-| Network ACLs | Deny + allow AVDSubnet + AgentsSubnet | **none** |
-| CMK | UAMI + KV key per STA | **not set** |
-| File diagnostics → LAW | yes | **not set** |
-| SMB share RBAC | `fslogix_roles.bicep` | **missing** (NTFS may stay Hybrid/PS) |
-
-### 3. Lab Key Vaults + PERS blob storage — missing from int/prd labs
-
-Legacy `labCorePersistent` / `labCoreMulti`:
-
-- Premium KV per lab, RBAC, VNet ACL (AVDSubnet + AgentsSubnet)
-- PERS **blob** STA (`p_sta`) with VNet rules
-
-TF labs today: spokes + one FSLogix STA only. AVD stack has one empty KV shell — **not** the per-lab KVs.
-
-[`modules/core/keyvault`](../../modules/core/keyvault) exists but is **not wired** into `environments/*/labs`.
-
-### 4. Subnet service endpoints not set
-
-Legacy lab subnets expose **Microsoft.Storage** + **Microsoft.KeyVault** for the ACL model.
-
-TF labs never pass `service_endpoints` on PERS/MSH subnets (spoke modules support it).
-
----
-
-## P1 — Module capability exists; env maps empty / incomplete
-
-| Item | Legacy | TF module | Env status |
-|---|---|---|---|
-| Action groups + ~17 alert templates + APR + alert UAMI | `platform/.../bicep/alerts` | `modules/platform/management` supports AG + metric/activity/query alerts | **empty** — `TODO(Phase D extend)` |
-| Multi-DCR + custom LAW tables (MSH + PERS + Robot RDP) | `mult/.../vdi_dcr.bicep`, scripts `uks-EEE-vdi-avd-dcr-*.bicep` | Only optional single AVD Insights DCR | Incomplete |
-| Mgmt / gallery / WVD Power-On-Off subscription RBAC | `access.bicep`, `vdi_sub_roles.bicep`, `gallery_roles.bicep` | role_assignment maps | `mgmt_role_assignments={}`, `gallery_role_assignments={}` |
-| Host-pool diagnostic settings | yes | hostpool supports `law_id` | Only if `var.law_id` set; scaling-plan **diag not in module** |
-| Hub/FW/VPN diagnostics → LAW | hub Bicep | hub modules support LAW id | connectivity **does not pass** LAW id |
-| IP Groups on FWP | large `p_ipGroups` set | firewall-policy module supports | **empty** (full rules → Policy; IP groups may still be needed for smoke) |
-
----
-
-## P2 — Known deferred / intentionally empty
-
-| Item | Notes |
+| Tag | Meaning |
 |---|---|
-| Full AZFW rule collections | Deferred to Azure Policy / `vdi-initiatives` |
-| Hub02 VPN site/connection | GW only; LLD Open Item 5 |
-| MSH `0.0.0.0/0` next-hop type | `PENDING(LLD)` |
-| `pers_host_pools = {}` | Scaffold ready; needs live PERS inventory |
-| `labCorePriv` (local FW spoke) | Exists in legacy int; **no TF spoke** |
-| ASGs for session hosts | Tied to VM deploy → stays PS unless reused |
-| NSG flow logs | Legacy params wired; no Bicep resource found |
-| Private Endpoints / Private DNS | Not in legacy 1.0 |
-| Naming PENDING(TDA) AVD abbrs | `vdh/vdw/...` |
+| **DO** | Legacy proven + TF wrong/missing → fix in C01–C15 (or Wave C) |
+| **SOFTEN** | Mostly true; implement carefully |
+| **DEMOTE** | Not proven as TF work / overstated / out of Wave A/B |
+| **OK** | Already matches |
+
+### Wave A (MSH AVD)
+
+| Claim | Verdict | Proof |
+|---|---|---|
+| Per-pool `maxSessionLimit` 6/10/15/18; **0/30 = 16** | **DO** | All 30 JSON: 6×17, 10×1, 15×7, 18×5 |
+| Per-pool RDP profile MULT-* → `RDPProperties.json` | **DO** | JSON + PS stringify + Bicep |
+| `validationEnvironment` true on **9** (`005-00` false) | **DO** | Exact canary set |
+| `description` on all 30 | **DO** | All JSON |
+| `agentUpdate` Sat 01:00 GMT Standard Time | **DO** | JSON + Bicep |
+| Token `PT175H10M` on HP create | **DO** | Bicep exact; PS renew uses AddDays(27) — match Bicep |
+| Workspace friendlyName int/prd | **DO** | `environment.json` |
+| AG friendlyName `{BU} ({bu}-{pool})` | **DO** | `VDI_Environment_Helpers.psm1` |
+| Scaling `exclusionTag = spExclude` | **DO** | Bicep both SPs |
+| Scaling-plan diag `allLogs` → LAW | **DO** | `vdi_hp_resources.bicep` |
+| MSH `startVMOnConnect = false` | **OK** | All 30 + TF default |
+| Pooled / BreadthFirst / Desktop | **OK** | Bicep + JSON |
+| Host-pool **inline** diagnostic settings | **DEMOTE** | Legacy HP→LAW is Policy DINE, not mult Bicep |
+
+### Wave B (labs / storage / mgmt)
+
+| Claim | Verdict | Proof |
+|---|---|---|
+| 10 FSLogix STAs (01a×6 + 01b×4) | **DO** | `p_FSLogixSta` int+prd |
+| Shares on STA `…pf{bu}` | **DO** | naming + storage Bicep |
+| Deny ACL + AVDSubnet + AgentsSubnet | **DO** | `sa_fslogix.bicep` |
+| CMK + per-STA UAMI | **DO** | `rsg_storage` / `sa_kvkey` |
+| AADKERB domainName + domainGuid | **DO** | `p_FSLogixSta` |
+| SMB Kerberos / AES-256-GCM / SMB3.1.1 / multichannel | **DO** | `protocolSettings.smb` |
+| `allowSharedKeyAccess: false`, `requireInfrastructureEncryption: true` | **DO** | Bicep property names |
+| Public access + Deny ACL (no PE) | **SOFTEN** | PNA not explicit (API default Enabled); TF must not keep `false` without PE |
+| File diags StorageRead/Write/Delete + Transaction | **DO** | `sa_fslogix` |
+| Lab KVs Premium ×14 (2 Multi + 12 Pers) | **DO** | Priv = 15th — out unless labCorePriv |
+| PERS blob STA ×12 Standard_LRS | **DO** | `labCorePersistent` |
+| Lab AVD SE Storage+KeyVault | **DO** | lab params |
+| AgentsSubnet SE | **SOFTEN** | On **mgmt**, not “lab Agents” |
+| Mgmt NSG deny subnet CIDR | **DO** | vs TF VirtualNetwork tags |
+| Mgmt `default-to-firewall` RT | **DO** | TF does not pass FW IP |
+| FSLogix temp-VM STA RBAC | **DEMOTE** | maintenance path |
+| Share SMB user RBAC / NTFS | **DEMOTE** | stays PS |
+
+### PERS / Power On Off
+
+| Claim | Verdict |
+|---|---|
+| PERS `startVMOnConnect` default **true** | **DO** (Wave D) — pipeline/PSM1/Bicep |
+| WVD Power On Off on AVD + **MSH** labs | **DO** (Wave C) |
+| WVD Power On Off on **PERS** labs | **DEMOTE / ask** — not in PERS create path |
 
 ---
 
-## Explicit non-gaps (stays PowerShell — OK)
+## Execution chunks (C01–C15)
 
-Session hosts, Packer versions, token consume by pipelines (TF still mints/rotates registration tokens), Desktop Virtualization User on AGs, AAD membership, FSLogix profile delete/redirection XML apply, agent VMSS, ADE/disk/power/decom ops.
+| Chunk | Scope | Status |
+|---|---|---|
+| C01 | This doc refresh | **done** |
+| C02 | Per-pool max/RDP/validate/description | **done** |
+| C03 | scheduled_agent_updates Sat 01:00 GMT | **done** |
+| C04 | Token ~PT175H10M (175h) | **done** |
+| C05 | Workspace + AG friendly names | **done** |
+| C06 | Scaling exclusion_tag + allLogs diag | **done** |
+| C07 | dummies-guide + validate avd | **done** |
+| C08 | storage-fslogix module SMB/ACL model | **done** |
+| C09 | 10 FSLogix STAs + share placement | **done** |
+| C10 | STA ACLs + CMK | **partial** — Deny ACLs + AVD/Agents wired; **CMK/UAMI still open** (needs C11) |
+| C11 | 14 lab Key Vaults | **open** |
+| C12 | 12 PERS blob STAs | **open** |
+| C13 | Service endpoints labs+mgmt | **done** |
+| C14 | Mgmt NSG CIDR + firewall RT | **done** |
+| C15 | validate labs+mgmt + READMEs | **partial** — validate green; README polish open |
+| Wave C+ | LAW/DCR/alerts/RBAC | blocked on §E |
 
 ---
 
-## Recommended remediation waves
+## P0 — wrong or missing (C02–C15)
 
-**Do not execute until approved.** Suggested order:
+### MSH host pools
 
-### Wave A — AVD object parity (highest “wrong config” risk)
+| Field | Legacy | TF (pre-fix) |
+|---|---|---|
+| `maxSessionLimit` | 6–18 per pool (0×16) | blanket 16 |
+| `customRdpProperty` | MULT-* resolved | null |
+| `validationEnvironment` | 9 canaries; 005-00 false | always false |
+| `description` | all 30 | unset |
+| `agentUpdate` | Sat 01:00 GMT | module gap |
+| Registration token | Bicep `PT175H10M` | 24h |
+| Workspace friendlyName | int DevTest… / prd Shared… | unset |
+| AG friendlyName | `{BU} ({bu}-{pool})` | unset |
+| Scaling exclusionTag | `spExclude` | module gap |
+| Scaling-plan diags | `allLogs` → LAW | module gap |
 
-1. Port per-pool `maxSessionLimit`, `validationEnvironment`, and resolved `custom_rdp_properties` from hostpool JSON + `RDPProperties.json` into `local.msh_host_pools` (int + prd).
-2. Add scheduled agent updates to `modules/avd/hostpool` if provider supports; else document as known gap.
-3. Wire scaling-plan diagnostic settings if legacy had them.
-4. Update [dummies-guide.md](../dummies-guide.md) — remove “max sessions 16” as universal truth.
+### Labs / storage / mgmt
 
-### Wave B — Labs storage / KV / network ACLs
+| Field | Legacy | TF (pre-fix) |
+|---|---|---|
+| FSLogix STA count / placement | 10; shares on `…pf{bu}` | 1 STA |
+| Network ACLs / CMK / AADKERB domain | as Bicep | missing |
+| SMB / shared key / infra enc / file diags | as Bicep | module gaps |
+| `public_network_access` | implicit Enabled + Deny ACL | default false |
+| Lab KVs | 14 Premium | not wired |
+| PERS blob STA | ×12 | missing |
+| Lab AVD + mgmt Agents SE | Storage + KeyVault | not passed |
+| Mgmt NSG / RT | CIDR deny + default-to-firewall | VirtualNetwork deny / no RT |
 
-1. `for_each` FSLogix STAs per BU suffix from `p_FSLogixSta` (01a/01b); put each pool’s shares on the correct STA.
-2. Network rules: deny-by-default + AVDSubnet + AgentsSubnet; AgentsSubnet id from mgmt output.
-3. Service endpoints on lab subnets.
-4. Per-lab Key Vaults (PERS + MULT) via `modules/core/keyvault`.
-5. PERS blob STA (module call or thin storage-blob helper).
-6. CMK: lab KV key + UAMI + STA CMK (mirror legacy `sa_kvkey` / `kv_roleassignment`).
+---
 
-### Wave C — Monitoring / RBAC fill (backlog)
+## P1 Wave C — monitoring / RBAC backlog
 
-1. Port alert templates + action groups + APR + UAMI into mgmt (or dedicated alerts stack).
-2. Port MSH/PERS DCR set + custom tables (beyond single Insights DCR).
-3. Fill `mgmt_role_assignments` / gallery Packer MSI / WVD Power-On-Off Contributor from legacy access params.
-4. Pass LAW id into connectivity hub diagnostics.
+### LAW
 
-### Wave D — Inventory-driven (backlog)
+One workspace/env (`uks-{env}-vdi-avd-logs-law-01`). ops and secOps DCR labels → **same** ID. int `resourcePermissions=true`, prd `false`. Effective retention **30** (nested 31 unused).
 
-1. Fill `pers_host_pools` from live/legacy PERS catalog.
-2. Decide labCorePriv (in/out of cutover).
-3. Clean obsolete `environments/prod` when unlocked.
-4. Untrack `legacy/` gitlinks from GitHub (section 0).
+### DCR / DCE
+
+MSH (mult Bicep): `dcr-mult`, `dcr-mult-vminsights`, `dcr-multfslp`, `dcr-multwss`, `dce-mult-all` + `multfslp_CL`. PERS (scripts): default/pool/Robot/priv + `WSS_CL`. Associations stay with VMs. TF today: single Insights DCR+DCE in mgmt.
+
+### Alerts (15 active)
+
+AG `acg-DevicesLab` → `GRPG882932@nalloydsbanking.com`. APR pipeline-driven. UAMI `custom-log-alerts-msi` Reader for vCPU ARG. Templates enabled only when env contains `prd`. Skip commented Intune / old startfailed.
+
+### RBAC — TF-worthy (platform only)
+
+| Purpose | Role | Scope | Notes |
+|---|---|---|---|
+| DevOps ADA | VM Contributor | mgmt sub | int/prd SP IDs in `params-access.json` |
+| Alert UAMI | Reader | mult + pers + broker | with alerts |
+| WVD Power On Off | `40c5ff49-…` | AVD + **mult** lab subs | PERS labs: ask |
+| Pipeline Privileged Contributor | file data | lab SA RG | if SP known to TF |
+| Gallery Packer MSI | custom role GUID | gallery RG | assign existing |
+| Lab KV CMK | Crypto Officer / Encryption User | lab KVs | with Wave B C10/C11 |
+| FSLogix temp-VM STA roles | Elevated/KeyOp/Reader | STA | out until temp-VM TF |
+
+**Stay PS:** AG Desktop Virtualization User, AAD membership, share SMB user RBAC, NTFS, session-host login.
+
+### Decisions before Wave C
+
+1. LAW retention: 30 (effective) or 31 (unused param)?
+2. Keep int/prd `resourcePermissions` split?
+3. Int alerts: deploy disabled or skip?
+4. Hub/HP diag: TF vs Policy?
+5. PERS DCR: default only until inventory?
+6. Gallery custom role: assign GUID only?
+7. PERS lab Power On Off: add anyway or MSH-only?
+
+---
+
+## P2 Wave D — backlog
+
+- Fill `pers_host_pools`: Personal / Direct / Persistent / max 9999 / **`start_vm_on_connect = true`** / Desktop
+- labCorePriv
+- Untrack `legacy/` gitlinks from GitHub (`git rm -r --cached legacy/`)
+- Naming PENDING(TDA)
+
+---
+
+## Repo hygiene — `legacy/` on GitHub
+
+[`.gitignore`](../../.gitignore) has `legacy/`, but remote can still show nested **gitlinks** (mode `160000`). Ignore does not untrack indexed paths. When approved: `git rm -r --cached legacy/` then commit/push.
 
 ---
 
@@ -230,7 +218,7 @@ Session hosts, Packer versions, token consume by pipelines (TF still mints/rotat
 ```text
 _global          → vWAN
 connectivity     → FWP stub, Hub01, Hub02 (VPN peer missing)
-mgmt             → LAW + DCE + Insights DCR; alerts empty; agent VMSS stays PS
-labs             → PERS/MSH spokes + NSG/RT; FSLogix shares OK; STA/KV/ACLs incomplete
-avd              → 30 MSH HP + scaling; RDP/max sessions wrong; PERS map empty; gallery defs OK
+mgmt             → LAW + DCE + Insights DCR; alerts empty; NSG/RT gaps (C14)
+labs             → PERS/MSH spokes; FSLogix share names OK; STA/KV/ACLs incomplete (C08–C13)
+avd              → 30 MSH HP + scaling; RDP/max sessions wrong pre-C02–C06; PERS map empty
 ```

@@ -51,6 +51,23 @@ resource "azurerm_virtual_desktop_host_pool" "this" {
   start_vm_on_connect   = var.start_vm_on_connect
   custom_rdp_properties = var.custom_rdp_properties
 
+  dynamic "scheduled_agent_updates" {
+    for_each = var.scheduled_agent_updates != null ? [var.scheduled_agent_updates] : []
+    content {
+      enabled                   = scheduled_agent_updates.value.enabled
+      timezone                  = scheduled_agent_updates.value.timezone
+      use_session_host_timezone = scheduled_agent_updates.value.use_session_host_timezone
+
+      dynamic "schedule" {
+        for_each = scheduled_agent_updates.value.schedules
+        content {
+          day_of_week = schedule.value.day_of_week
+          hour_of_day = schedule.value.hour_of_day
+        }
+      }
+    }
+  }
+
   tags = var.tags
 }
 

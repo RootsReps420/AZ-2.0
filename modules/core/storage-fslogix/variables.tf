@@ -68,10 +68,46 @@ variable "min_tls_version" {
   default     = "TLS1_2"
 }
 
+variable "name_override" {
+  description = "Optional exact storage account name (bypasses modules/naming). Use for legacy-exact names (24-char alphanumeric)."
+  type        = string
+  default     = null
+}
+
 variable "public_network_access_enabled" {
-  description = "Whether the account is reachable from public networks. Set false when fronted by a private endpoint."
+  description = "Whether the account is reachable from public networks. Legacy FSLogix uses Deny ACL + VNet rules with public access enabled (API default); keep true for that model. Set false only with private endpoints."
+  type        = bool
+  default     = true
+}
+
+variable "shared_access_key_enabled" {
+  description = "Allow shared key access. Legacy FSLogix sets allowSharedKeyAccess false."
   type        = bool
   default     = false
+}
+
+variable "infrastructure_encryption_enabled" {
+  description = "Double encryption at rest. Legacy requireInfrastructureEncryption true."
+  type        = bool
+  default     = true
+}
+
+variable "smb" {
+  description = "Optional Azure Files SMB protocol settings (legacy: Kerberos, AES-256-GCM, SMB3.1.1, multichannel)."
+  type = object({
+    versions                        = optional(list(string), ["SMB3.1.1"])
+    authentication_types            = optional(list(string), ["Kerberos"])
+    kerberos_ticket_encryption_type = optional(list(string), ["AES-256"])
+    channel_encryption_type         = optional(list(string), ["AES-256-GCM"])
+    multichannel_enabled            = optional(bool, true)
+  })
+  default = null
+}
+
+variable "log_analytics_workspace_id" {
+  description = "LAW id for file-service diagnostics. Null skips the diagnostic setting."
+  type        = string
+  default     = null
 }
 
 variable "share_soft_delete_days" {
@@ -104,7 +140,8 @@ variable "identity_ids" {
 variable "azure_files_authentication" {
   description = <<-EOT
     Identity-based auth for Azure Files. directory_type is one of AADKERB, AADDS, AD.
-    Provide active_directory only for on-prem AD DS (directory_type = AD).
+    For AADKERB, domain_name + domain_guid may be set (legacy p_FSLogixSta); other AD
+    fields are required only for directory_type = AD.
   EOT
   type = object({
     directory_type                 = string
@@ -112,10 +149,10 @@ variable "azure_files_authentication" {
     active_directory = optional(object({
       domain_name         = string
       domain_guid         = string
-      domain_sid          = string
-      forest_name         = string
-      netbios_domain_name = string
-      storage_sid         = string
+      domain_sid          = optional(string)
+      forest_name         = optional(string)
+      netbios_domain_name = optional(string)
+      storage_sid         = optional(string)
     }))
   })
   default = null

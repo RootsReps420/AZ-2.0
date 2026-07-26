@@ -49,7 +49,7 @@ module "management" {
   tags = module.tags.tags
 }
 
-# Mgmt spoke — reuse spoke-pers (Hub01 connection, no UDR). Agent VMSS not TF-managed.
+# Mgmt spoke — Hub01 + legacy default-to-firewall RT. Agent VMSS not TF-managed.
 module "spoke_mgmt" {
   source = "../../../modules/core/spoke-pers"
 
@@ -66,24 +66,27 @@ module "spoke_mgmt" {
 
   subnets = {
     "AgentsSubnet" = {
-      address_prefixes = var.mgmt_address_space
+      address_prefixes  = var.mgmt_address_space
+      service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
+      # Legacy params-netsec: deny east-west using AgentsSubnet CIDR (not VirtualNetwork tag)
       security_rules = {
-        "deny-vnet-inbound" = {
-          priority                   = 4000
-          direction                  = "Inbound"
-          access                     = "Deny"
-          protocol                   = "*"
-          source_port_range          = "*"
-          destination_port_range     = "*"
-          source_address_prefix      = "VirtualNetwork"
-          destination_address_prefix = "VirtualNetwork"
+        "deny-subnet-inbound-subnet" = {
+          priority                     = 4000
+          direction                    = "Inbound"
+          access                       = "Deny"
+          protocol                     = "*"
+          source_port_range            = "*"
+          destination_port_range       = "*"
+          source_address_prefixes      = var.mgmt_address_space
+          destination_address_prefixes = var.mgmt_address_space
         }
       }
     }
   }
 
-  hub01_id = var.hub01_id
-  tags     = module.tags.tags
+  hub01_id                  = var.hub01_id
+  hub01_firewall_private_ip = var.hub01_firewall_private_ip
+  tags                      = module.tags.tags
 }
 
 resource "azurerm_role_assignment" "mgmt" {

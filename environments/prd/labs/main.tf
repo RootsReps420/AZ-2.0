@@ -76,6 +76,7 @@ module "spoke_pers" {
     "AVDSubnet" = {
       address_prefixes      = each.value.avd_subnet
       associate_route_table = true
+      service_endpoints     = ["Microsoft.Storage", "Microsoft.KeyVault"]
       security_rules        = local.pers_security_rules[each.key]
     }
   }
@@ -103,6 +104,7 @@ module "spoke_msh" {
     for name, cidr in each.value.avd_subnets : name => {
       address_prefixes      = [cidr]
       associate_route_table = true
+      service_endpoints     = ["Microsoft.Storage", "Microsoft.KeyVault"]
       security_rules        = local.msh_security_rules[each.key]
     }
   }
@@ -114,23 +116,50 @@ module "spoke_msh" {
   tags = module.tags_mult.tags
 }
 
-# FSLogix storage (MSH) — profile ops stay PS; share map from fslogix_shares.tf
+# FSLogix storage (MSH) — 10 STAs (legacy p_FSLogixSta); profile ops stay PS
 module "storage_fslogix" {
-  count  = var.enable_fslogix ? 1 : 0
-  source = "../../../modules/core/storage-fslogix"
+  for_each = var.enable_fslogix ? local.fslogix_stas : {}
+  source   = "../../../modules/core/storage-fslogix"
 
-  name                = "mult"
+  name                = "multilb${each.value.lab}pf"
   resource_group_name = azurerm_resource_group.mult.name
   location            = local.location
-  subscription_id     = var.subscription_code
+  subscription_id     = ""
   environment         = local.env
-  unique_id           = "01"
+  unique_id           = each.value.bu
+  name_override       = local.fslogix_legacy_sta_name[each.key]
+
+  public_network_access_enabled     = true
+  shared_access_key_enabled         = false
+  infrastructure_encryption_enabled = true
 
   azure_files_authentication = {
     directory_type = "AADKERB"
+    active_directory = {
+      domain_name = local.fslogix_aadkerb.domain_name
+      domain_guid = local.fslogix_aadkerb.domain_guid
+    }
   }
 
-  shares = local.fslogix_shares
+  smb = {
+    versions                        = ["SMB3.1.1"]
+    authentication_types            = ["Kerberos"]
+    kerberos_ticket_encryption_type = ["AES-256"]
+    channel_encryption_type         = ["AES-256-GCM"]
+    multichannel_enabled            = true
+  }
+
+  network_rules = {
+    default_action = "Deny"
+    bypass         = ["AzureServices"]
+    virtual_network_subnet_ids = compact([
+      module.spoke_msh[each.value.lab].subnet_ids[each.value.avd_subnet],
+      var.agents_subnet_id,
+    ])
+  }
+
+  shares                     = local.fslogix_shares_by_sta[each.key]
+  log_analytics_workspace_id = var.law_id
 
   tags = module.tags_mult.tags
 }

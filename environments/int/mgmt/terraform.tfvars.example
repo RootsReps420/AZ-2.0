@@ -3,7 +3,8 @@ location              = "uksouth"
 environment           = "int"
 subscription_code     = "mgmt"
 
-hub01_id = "/subscriptions/REPLACE/resourceGroups/REPLACE/providers/Microsoft.Network/virtualHubs/REPLACE"
+hub01_id                  = "/subscriptions/REPLACE/resourceGroups/REPLACE/providers/Microsoft.Network/virtualHubs/REPLACE"
+hub01_firewall_private_ip = "10.0.0.0" # TODO(deploy): from connectivity output hub01_firewall_private_ip
 
 mandatory_tags = {
   costCentre             = "CLL411S1XJ"

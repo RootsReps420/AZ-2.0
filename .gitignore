@@ -23,3 +23,7 @@ terraform.rc
 
 # Local reference copy of Azure 1.0 repos (not deployed; Privacy Mode / large)
 legacy/
+
+# Local-only docs (handoff, sandbox runbooks — keep on disk, do not push)
+docs/plans/03-cursor-handoff.md
+docs/plans/05-sandbox-deploy-runthrough.md

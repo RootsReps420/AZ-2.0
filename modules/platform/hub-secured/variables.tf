@@ -39,12 +39,12 @@ variable "virtual_wan_id" {
 }
 
 variable "address_prefix" {
-  description = "Address space of the virtual hub in CIDR notation. Must be at least /24 (Azure requires /23 or /24 for Secured Virtual Hubs)."
+  description = "Address space of the virtual hub in CIDR notation. Azure minimum is /24; recommend /23 or larger. Azure Firewall in a hub requires /22 for max scale. Bank Azure 2.0 hubs use /22."
   type        = string
 
   validation {
     condition     = can(cidrhost(var.address_prefix, 0))
-    error_message = "address_prefix must be a valid CIDR block (e.g. \"10.0.0.0/23\")."
+    error_message = "address_prefix must be a valid CIDR block (e.g. \"10.218.64.0/22\")."
   }
 }
 

@@ -235,6 +235,7 @@ Every environment stack is thin glue: it calls these modules with env-specific m
 | [`modules/platform/firewall-policy`](../modules/platform/firewall-policy) | Creates **Firewall Policy** + optional IP groups + rule collection groups. Today: DNS proxy on, **rule collections stub/empty** (full Secure Hub rules → Azure Policy later). | `connectivity` → attached to Hub01 firewall |
 | [`modules/platform/hub-secured`](../modules/platform/hub-secured) | **Hub01**: virtual hub + AZFW_Hub + ExpressRoute gateway + Routing Intent (Internet + Private → firewall). Outputs `hub_id`, `firewall_private_ip`. | `connectivity` |
 | [`modules/platform/hub-unsecured`](../modules/platform/hub-unsecured) | **Hub02**: virtual hub + VPN gateway shell (no firewall, no Routing Intent). VPN site/connection not added yet. | `connectivity` |
+| [`modules/platform/hub-spare`](../modules/platform/hub-spare) | **Hub03** (prd): bare spare virtual hub — no FW/VPN/ER/spokes. vWAN mesh membership + address reservation only until something attaches. | `prd/connectivity` |
 
 ### 2.3 Platform — observability
 
@@ -268,6 +269,7 @@ Every environment stack is thin glue: it calls these modules with env-specific m
 ```text
 _global        → naming, tags, vwan
 connectivity   → naming, tags, firewall-policy, hub-secured, hub-unsecured
+                 (+ hub-spare on prd for Hub03)
 mgmt           → naming, tags, management, spoke-pers (+ alert/APR/UAMI resources in root)
 labs           → naming, tags, spoke-pers, spoke-msh, storage-fslogix, storage-blob, keyvault
 avd            → naming, tags, hostpool, workspace, scalingplan, gallery, image-definition,
@@ -492,18 +494,20 @@ Each stack’s `azure_subscription_id` is the **subscription that owns that stac
 | Firewall policy | SKU Standard; DNS proxy **on**; servers = corporate DNS; **rule collections empty** (full Secure Hub rules → Azure Policy / later work) |
 | Hub01 (`hub-secured`) | Virtual hub + **AZFW_Hub** + ExpressRoute gateway (`scale_units = 1`) + **Routing Intent**: InternetTraffic + PrivateTraffic → firewall |
 | Hub02 (`hub-unsecured`) | Virtual hub + VPN gateway shell (`scale_unit = 1`, routing preference Microsoft Network). **No VPN site / connection yet** |
+| Hub03 (`hub-spare`, **prd only**) | Bare virtual hub — no FW/VPN/ER/spokes. Address reservation + vWAN mesh; private traffic via Hub01 FW when later used. Not a live VDI path today. |
 | ER circuit connection | Only if `expressroute_circuit_peering_id` set (default `null`) |
 
 **Hub address prefixes (defaults):**
 
-| Env | Hub01 | Hub02 |
-|---|---|---|
-| int | `10.170.245.0/24` | `10.170.246.0/24` |
-| prd | `10.170.247.0/24` | `10.170.244.0/24` |
+| Env | Hub01 | Hub02 | Hub03 |
+|---|---|---|---|
+| int | `10.170.245.0/24` | `10.170.246.0/24` | — (pending INT Azure 2.0 ranges) |
+| prd | `10.218.64.0/22` | `10.218.68.0/22` | `10.218.72.0/22` |
 
-Do **not** use `10.170.248.0/24` as prd Hub02 (collides with PERS `01l` `10.170.248.0/21`).
+Do **not** use `10.170.248.0/24` as a hub prefix (collides with PERS `01l` `10.170.248.0/21`).  
+prd hubs must stay distinct from int hubs on the shared `_global` vWAN.
 
-**Outputs → next:** `hub01_id`, `hub01_firewall_private_ip`, `hub02_id`, `firewall_policy_id`.  
+**Outputs → next:** `hub01_id`, `hub01_firewall_private_ip`, `hub02_id`, `hub03_id` (prd), `firewall_policy_id`.  
 Firewall private IP under vWAN is **not** classic `.4` — always take the connectivity output.
 
 ### 7.3 `mgmt`
@@ -928,6 +932,7 @@ Companion to §2 (what each module *is*). This table is what each module *return
 | `modules/platform/vwan` | `vwan_id` |
 | `modules/platform/hub-secured` | `hub_id`, `firewall_private_ip`, `firewall_id`, `express_route_gateway_id` |
 | `modules/platform/hub-unsecured` | `hub_id`, `vpn_gateway_id` |
+| `modules/platform/hub-spare` | `hub_id`, `hub_name` (no spoke consumers yet) |
 | `modules/platform/firewall-policy` | `policy_id` |
 | `modules/platform/management` | `law_id`, DCE/DCR ids, `action_group_ids` |
 | `modules/platform/dcr-msh` | `dcr_ids` map |

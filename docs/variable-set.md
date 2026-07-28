@@ -58,14 +58,14 @@ Override only if corporate DNS changes.
 
 ---
 
-## Address plan / Hub02
+## Address plan / hubs
 
-See `docs/address-plan-hubs.md`. Hub02 candidates treated as **accepted for TF defaults**:
+See `docs/address-plan-hubs.md`.
 
-| Env | Hub01 | Hub02 |
-|---|---|---|
-| int | `10.170.245.0/24` | `10.170.246.0/24` |
-| prod | `10.170.247.0/24` | `10.170.244.0/24` |
+| Env | Hub01 | Hub02 | Hub03 |
+|---|---|---|---|
+| int | `10.170.245.0/24` | `10.170.246.0/24` | — (pending INT Azure 2.0 ranges) |
+| prd | `10.218.64.0/22` | `10.218.68.0/22` | `10.218.72.0/22` (spare bare) |
 
 ---
 

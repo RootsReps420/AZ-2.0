@@ -12,7 +12,9 @@ mandatory_tags = {
   CMDB_AppID             = "AL17611"
 }
 
-hub01_address_prefix = "10.170.247.0/24" # VERIFIED: net_hub_01_vnetAddressSpace
-hub02_address_prefix = "10.170.244.0/24" # Accepted TF default; distinct from INT Hub02 246; NOT 248 (pers 01l /21)
+# Azure 2.0 Production hubs (10.218.64.0/20 → three /22). See docs/address-plan-hubs.md.
+hub01_address_prefix = "10.218.64.0/22" # Secured (AZFW + RI + ER)
+hub02_address_prefix = "10.218.68.0/22" # Unsecured (VPN shell / MSH path)
+hub03_address_prefix = "10.218.72.0/22" # Spare bare hub (mesh only; no spokes yet)
 
-dns_servers          = ["10.19.96.1", "10.19.97.1"] # VERIFIED: p_dnsServers
+dns_servers = ["10.19.96.1", "10.19.97.1"] # VERIFIED: p_dnsServers

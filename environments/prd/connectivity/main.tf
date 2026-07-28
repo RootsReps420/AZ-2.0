@@ -1,5 +1,5 @@
-# environments/int/connectivity — Hub01 + Hub02 + baseline firewall policy
-# IP ranges from legacy platform params/int/config.yml (verbatim).
+# environments/prd/connectivity — Hub01 + Hub02 + Hub03 + baseline firewall policy
+# Azure 2.0 hub address plan: 10.218.64.0/20 as three /22 hubs (see docs/address-plan-hubs.md).
 
 locals {
   location = var.location
@@ -89,6 +89,23 @@ module "hub_unsecured" {
     scale_unit         = 1
     routing_preference = "Microsoft Network"
   }
+
+  tags = module.tags.tags
+}
+
+# Hub03 — spare bare virtual hub (no FW/VPN/ER/spokes). Mesh member of the shared
+# vWAN; private traffic intended via Hub01 Routing Intent when later used.
+module "hub_spare" {
+  source = "../../../modules/platform/hub-spare"
+
+  name                = "hub03"
+  resource_group_name = azurerm_resource_group.connectivity.name
+  location            = local.location
+  subscription_id     = var.subscription_code
+  environment         = local.env
+
+  virtual_wan_id = var.virtual_wan_id
+  address_prefix = var.hub03_address_prefix
 
   tags = module.tags.tags
 }

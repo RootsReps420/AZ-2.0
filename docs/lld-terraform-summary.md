@@ -23,6 +23,7 @@ The LLD is the **code delivery spec** for the AVD Platform Modernisation program
 |---|---|---|
 | **Hub01 — Secured** | Azure Firewall + Routing Intent + ExpressRoute | PERS (personal desktops) |
 | **Hub02 — Unsecured** | VPN Gateway (internet via Palo Alto Proxy) | MSH (multi-session hosts) |
+| **Hub03 — Spare** (Azure 2.0 addendum, **prd**) | Bare virtual hub (no FW/VPN/ER/spokes yet) | Reserved mesh member; private via Hub01 FW if later used |
 
 Shared **Azure Virtual WAN**. Regions in the LLD vision: **UK South**, **Italy North**, **Spain Central**.
 
@@ -65,6 +66,7 @@ vdi-terraform/
 | `platform/vwan` | Global Virtual WAN |
 | `platform/hub-secured` | Hub01 + AZFW + ER GW + Routing Intent |
 | `platform/hub-unsecured` | Hub02 + VPN gateway |
+| `platform/hub-spare` | Hub03 spare bare hub (prd Azure 2.0 addendum) |
 | `platform/firewall-policy` | Firewall rules live here, not on the firewall resource |
 | `platform/management` | LAW / DCR / alerts / workbooks |
 | `core/spoke-pers` | PERS spoke → Hub01 only; no UDR (Routing Intent) |

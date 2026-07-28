@@ -45,7 +45,7 @@ variable "mandatory_tags" {
 # Hub01 INT: net_hub_01_vnetAddressSpace = 10.170.245.0/24  (VERIFIED)
 # Hub02: new unsecured hub — NOT in classic estate. 10.170.246.0/24 was PPD Hub01
 #   (ppd dropped); unused in int allocations (within net_superNetCidr 10.170.128.0/17).
-#   Must stay distinct from prod Hub02 (10.170.244.0/24). Network must confirm PPD reclaim.
+#   Must stay distinct from prd Hub02 (Azure 2.0: 10.218.68.0/22). See docs/address-plan-hubs.md.
 variable "hub01_address_prefix" {
   description = "Hub01 (secured) virtual hub address prefix. Legacy net_hub_01_vnetAddressSpace."
   type        = string
@@ -53,7 +53,7 @@ variable "hub01_address_prefix" {
 }
 
 variable "hub02_address_prefix" {
-  description = "Hub02 (unsecured) virtual hub address prefix. Accepted TF default (ex-PPD Hub01); distinct from prod Hub02 10.170.244.0/24."
+  description = "Hub02 (unsecured) virtual hub address prefix. Accepted TF default (ex-PPD Hub01); distinct from prd Hub02 10.218.68.0/22 (see docs/address-plan-hubs.md)."
   type        = string
   default     = "10.170.246.0/24"
 }

@@ -34,7 +34,7 @@ Terraform that lives in a **managed GitHub repo**, deployed via **Azure DevOps**
 
 - **Naming:** TDA everywhere for TF resources.
 - **Topology:** multi-sub split (conn / mgmt / avd / lab); env roots per stack; drop `ppd`; keep `idv/ici/itt/int` split for now; **`prd` not `prod`**.
-- **IPs:** carry legacy CIDRs verbatim where possible; Hub02 int=`10.170.246.0/24`, prd=`10.170.244.0/24` (not 248 — collides with PERS 01l). See [address-plan-hubs.md](../address-plan-hubs.md).
+- **IPs:** carry legacy CIDRs where still current; see [address-plan-hubs.md](../address-plan-hubs.md) — int Hub02=`10.170.246.0/24`; prd Azure 2.0 hubs=`10.218.64/68/72` `/22` (not 248 — collides with PERS 01l).
 - **DNS:** `10.19.96.1`, `10.19.97.1`.
 - **VMs never in TF** (state-file / lifecycle reasons).
 - **Full AZFW rules → Azure Policy** (separate workstream); TF ships empty/stub FWP only.

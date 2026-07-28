@@ -22,3 +22,8 @@ output "hub02_id" {
   description = "Unsecured virtual hub (Hub02) resource ID."
   value       = module.hub_unsecured.hub_id
 }
+
+output "hub03_id" {
+  description = "Spare bare virtual hub (Hub03) resource ID. No spoke consumers yet."
+  value       = module.hub_spare.hub_id
+}

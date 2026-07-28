@@ -15,7 +15,7 @@ mandatory_tags = {
 
 # Verbatim from legacy platform params/int/config.yml
 hub01_address_prefix = "10.170.245.0/24" # VERIFIED: net_hub_01_vnetAddressSpace
-hub02_address_prefix = "10.170.246.0/24" # Accepted TF default (ex-PPD Hub01); distinct from prod Hub02 244
+hub02_address_prefix = "10.170.246.0/24" # Accepted TF default (ex-PPD Hub01); distinct from prd Hub02 10.218.68.0/22
 
 dns_servers          = ["10.19.96.1", "10.19.97.1"] # VERIFIED: p_dnsServers
 

@@ -32,20 +32,26 @@ variable "mandatory_tags" {
   })
 }
 
-# Legacy platform params/prd/config.yml
-# Hub01 PROD: net_hub_01_vnetAddressSpace = 10.170.247.0/24  (VERIFIED)
-# Hub02: new — MUST NOT use 10.170.248.0/24 (collides with net_lab_core_pers_01l
-#   10.170.248.0/21). Candidate 10.170.244.0/24 (unused in legacy; distinct from
-#   INT Hub02 10.170.246.0/24). Do NOT reuse 246 for both envs. Network sign-off required.
+# Azure 2.0 hub IP plan (Production): parent 10.218.64.0/20 as three /22 hubs.
+# Hub01 secured / Hub02 unsecured / Hub03 spare bare. Distinct from int hubs
+# (10.170.245/246) on the shared vWAN. Do NOT use 10.170.248.0/24 (PERS 01l /21).
+# Supersedes classic Azure 1.0 Hub01 10.170.247.0/24 and interim Hub02 10.170.244.0/24.
 variable "hub01_address_prefix" {
-  type    = string
-  default = "10.170.247.0/24"
+  description = "Hub01 (secured) virtual hub address prefix. Azure 2.0 Production hub 1."
+  type        = string
+  default     = "10.218.64.0/22"
 }
 
 variable "hub02_address_prefix" {
-  description = "Hub02 (unsecured) virtual hub address prefix. Accepted TF default. Do NOT use 10.170.248.0/24 (pers 01l) or 10.170.246.0/24 (INT Hub02)."
+  description = "Hub02 (unsecured) virtual hub address prefix. Azure 2.0 Production hub 2. Do NOT use 10.170.248.0/24 (pers 01l)."
   type        = string
-  default     = "10.170.244.0/24"
+  default     = "10.218.68.0/22"
+}
+
+variable "hub03_address_prefix" {
+  description = "Hub03 (spare / bare) virtual hub address prefix. Azure 2.0 Production hub 3 — reservation + vWAN mesh only; no spokes yet."
+  type        = string
+  default     = "10.218.72.0/22"
 }
 
 variable "dns_servers" {

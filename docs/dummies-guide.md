@@ -1,7 +1,7 @@
 # VDI Terraform — as-built low-level design
 
 **Audience:** engineers new to this monorepo.  
-**Status:** Reflects code on `main` after legacyâ†”TF parity (C01“C20 + Wave D + labCorePriv).  
+**Status:** Reflects code on `main` after legacy-to-TF parity (C01-C20 + Wave D + labCorePriv) and **prd Hub03** (`modules/platform/hub-spare`).  
 **Environments in scope:** `int` (DT / dev test) and `prd` (production).  
 **Region:** `uksouth` only.
 
@@ -21,7 +21,7 @@ This is the practical LLD for **what Terraform actually deploys today**. Compani
 
 | Section | What it answers |
 |---|---|
-| §1 | Why the design looks like this + overview diagrams |
+| §1 | Why the design looks like this + overview diagrams + **Hub03** (§1.9) |
 | §2 | Every Terraform **module** — what it is, what it creates, who calls it |
 | §3 | How **Azure DevOps** runs Terraform vs which **legacy scripts/pipelines** stay |
 | §4 | Identities / SPNs / what stays PowerShell |
@@ -42,13 +42,14 @@ Port the legacy Azure 1.0 VDI estate (Bicep + PowerShell across platform / pers 
 | Path | Hub | Traffic model |
 |---|---|---|
 | **Personal (PERS)** + **Privileged (PRIV)** + **mgmt** | **Hub01 (secured)** | Azure Firewall + Routing Intent (Internet + Private → firewall). ExpressRoute gateway on Hub01. |
-| **Multisession (MSH)** | **Both hubs** | Explicit UDR: internet `0.0.0.0/0` → Hub02 VPN (Palo Alto Proxy path); RFC1918 + `AzureCloud` → Hub01 firewall IP. Hub connections have `internet_security_enabled = false` so Routing Intent does not override the UDR. |
+| **Multisession (MSH)** | **Hub01 + Hub02** | Explicit UDR: internet `0.0.0.0/0` → Hub02 VPN (Palo Alto Proxy path); RFC1918 + `AzureCloud` → Hub01 firewall IP. Hub connections have `internet_security_enabled = false` so Routing Intent does not override the UDR. |
+| **Nothing today** | **Hub03 (spare, prd only)** | Bare virtual hub on the shared vWAN — **no firewall, no VPN/ER, no spokes**. Address reservation + full-mesh membership only. Not a live VDI traffic path until something is attached later. |
 
 ### 1.2 City metaphor (one glance)
 
 | City part | In this estate |
 |---|---|
-| Motorway interchange | Virtual WAN + Hub01 + Hub02 |
+| Motorway interchange | Virtual WAN + Hub01 + Hub02 (+ Hub03 spare on **prd**) |
 | Neighbourhoods | Spokes (mgmt / PERS / PRIV / MSH VNets) |
 | Streets | Subnets (AgentsSubnet, AVDSubnet, AVDSubnet-00x) |
 | Estate office rules | AVD host pools, workspaces, scaling plans |
@@ -67,6 +68,7 @@ flowchart TB
     FWP[Firewall Policy - baseline / stub rules]
     H1[Hub01 Secured]
     H2[Hub02 Unsecured]
+    H3[Hub03 Spare - prd only]
     AZFW[Azure Firewall AZFW_Hub]
     ER[ExpressRoute Gateway]
     VPN[VPN Gateway shell]
@@ -102,6 +104,7 @@ flowchart TB
 
   VWAN --> H1
   VWAN --> H2
+  VWAN --> H3
   H1 --> AGENTS
   H1 --> PERS
   H1 --> PRIV
@@ -213,6 +216,67 @@ legacy/                    # Local reference clones only (gitignored / untracked
 ```
 
 Ignore for cutover: `environments/uksouth/{dev,prod}`, `environments/prod/` (naming stub). Live folder/env segment is **`prd`**, not `prod`.
+
+### 1.9 Hub03 (spare) — what changed and what it actually is
+
+**Recent repo change:** production connectivity now deploys a **third virtual hub** (Hub03) via [`modules/platform/hub-spare`](../modules/platform/hub-spare). Integration (`int`) still has only Hub01 + Hub02 until INT Azure 2.0 hub ranges are agreed.
+
+#### What Terraform creates (prd `connectivity` only)
+
+| Piece | Detail |
+|---|---|
+| Module call | `module "hub_spare"` in [`environments/prd/connectivity/main.tf`](../environments/prd/connectivity/main.tf) |
+| Variable | `hub03_address_prefix` — default **`10.218.72.0/22`** in [`variables.tf`](../environments/prd/connectivity/variables.tf) |
+| Azure resource | Single `azurerm_virtual_hub` attached to the shared `_global` Virtual WAN |
+| Output | `hub03_id` — **no downstream stack consumes it yet** (no spokes, no gateways) |
+
+#### What Hub03 deliberately does **not** have
+
+- No Firewall Policy attachment
+- No Azure Firewall SKU
+- No Routing Intent
+- No ExpressRoute gateway
+- No VPN gateway
+- No `azurerm_virtual_hub_connection` (no lab/mgmt/AVD spokes)
+
+So today Hub03 is **not** a traffic path for VDI. Session hosts still use Hub01 (PERS/PRIV/mgmt) or Hub01+Hub02 (MSH) exactly as before.
+
+#### Why it exists
+
+Azure 2.0 production reserves a **parent `/20`** for all hub address space and slices it into three `/22` hubs. Hub03 holds the third slice so:
+
+1. Addresses stay **unique** on the shared vWAN (int + prd both attach to `_global`).
+2. A future gateway or spoke can attach without re-carving the `10.218.64.0/20` block.
+3. When something does attach, **private** traffic can still be steered through **Hub01** Azure Firewall (Routing Intent on Hub01) — Hub03 is mesh-only until then.
+
+**Billing note:** an empty virtual hub still incurs virtual hub capacity charges even with no spokes.
+
+#### prd hub IP layout (Azure 2.0)
+
+Full detail: [`docs/address-plan-hubs.md`](address-plan-hubs.md).
+
+```text
+10.218.64.0/20   prd hub parent (10.218.64.0 – 10.218.75.255)
+├── 10.218.64.0/22   Hub01  secured   AZFW + Routing Intent + ExpressRoute
+├── 10.218.68.0/22   Hub02  unsecured VPN gateway shell (MSH internet path)
+└── 10.218.72.0/22   Hub03  spare     bare vhub — mesh + address reservation only
+```
+
+| Slice | Usable host range (approx.) | Module |
+|---|---|---|
+| `10.218.64.0/22` | `10.218.64.0` – `10.218.67.255` | `hub-secured` |
+| `10.218.68.0/22` | `10.218.68.0` – `10.218.71.255` | `hub-unsecured` |
+| `10.218.72.0/22` | `10.218.72.0` – `10.218.75.255` | `hub-spare` |
+
+**Do not use** `10.170.248.0/24` as any hub prefix — it collides with prd PERS spoke `01l` (`10.170.248.0/21`).
+
+#### int hub IPs (unchanged — no Hub03 yet)
+
+| Hub | CIDR | Role |
+|---|---|---|
+| Hub01 | `10.170.245.0/24` | Secured |
+| Hub02 | `10.170.246.0/24` | Unsecured |
+| Hub03 | — | Not deployed |
 
 ---
 
@@ -424,10 +488,10 @@ Full pipeline ownership is in §3. Short list:
 
 | Pattern | Example shape |
 |---|---|
-| Default | `{region}-{subscription}-{abbr}-{description}-{unique}` → `uks-â€¦` for uksouth |
+| Default | `{region}-{subscription}-{abbr}-{description}-{unique}` → `uks-...` for uksouth |
 | Resource group | `{region}-{subscription}-rsg-{description}` |
-| Key Vault | `{region}-{environment}-â€¦-kvt-{7char}` (â‰¤24) |
-| Storage | alnum concat â‰¤24; FSLogix/blob often use **`name_override`** for legacy names |
+| Key Vault | `{region}-{environment}-...-kvt-{7char}` (<=24) |
+| Storage | alnum concat <=24; FSLogix/blob often use **`name_override`** for legacy names |
 | Gallery | underscore-joined |
 | AVD abbreviations | `vdh` / `vdw` / `vda` / `vds` — **PENDING(TDA)** |
 
@@ -504,6 +568,10 @@ Each stack’s `azure_subscription_id` is the **subscription that owns that stac
 | int | `10.170.245.0/24` | `10.170.246.0/24` | — (pending INT Azure 2.0 ranges) |
 | prd | `10.218.64.0/22` | `10.218.68.0/22` | `10.218.72.0/22` |
 
+prd hubs share parent **`10.218.64.0/20`** (three consecutive `/22` slices). See §1.9 and [`address-plan-hubs.md`](address-plan-hubs.md).
+
+**Terraform wiring (prd):** `module.hub_secured` → Hub01, `module.hub_unsecured` → Hub02, `module.hub_spare` → Hub03. Only Hub01/02 IDs flow into `mgmt` and `labs` today.
+
 Do **not** use `10.170.248.0/24` as a hub prefix (collides with PERS `01l` `10.170.248.0/21`).  
 prd hubs must stay distinct from int hubs on the shared `_global` vWAN.
 
@@ -540,7 +608,7 @@ Route table: `default-to-firewall` → Hub01 firewall private IP when IP is pass
 
 | Resource | Notes |
 |---|---|
-| PERS spokes 01a“01l | Hub01; `default-to-firewall` UDR; AVDSubnet |
+| PERS spokes 01a-01l | Hub01; `default-to-firewall` UDR; AVDSubnet |
 | PRIV spoke 01a | Same spoke pattern; **no local AZFW** (legacy had one; Hub01 is next hop). FW CIDR space reserved in VNet address space only |
 | MSH spokes 01a/01b | Dual-hub + three-rule UDR |
 | 10 FSLogix STAs + shares | Per-BU placement; CMK via Multi KVs |
@@ -564,6 +632,17 @@ DNS on all lab VNets: `10.19.96.1`, `10.19.97.1`.
 ---
 
 ## 8. Network detail — CIDRs, routes, NSGs
+
+### 8.0 Hub address prefixes (summary)
+
+| Env | Hub01 (secured) | Hub02 (unsecured) | Hub03 (spare) |
+|---|---|---|---|
+| **int** | `10.170.245.0/24` | `10.170.246.0/24` | not deployed |
+| **prd** | `10.218.64.0/22` | `10.218.68.0/22` | `10.218.72.0/22` |
+
+Under Virtual WAN, each hub CIDR is the virtual hub `address_prefix` — not a classic VNet with `AzureFirewallSubnet` / `GatewaySubnet` children. Firewall and ER/VPN attach as **hub SKUs** on Hub01/Hub02 only.
+
+**Hub03 traffic:** none today. It participates in vWAN full mesh but has no spokes or gateways, so no UDR or Routing Intent applies to it.
 
 ### 8.1 Corporate DNS (everywhere)
 
@@ -625,8 +704,8 @@ Hub01 + Hub02 connections: `internet_security_enabled = false`.
 | Mgmt | `10.170.139.192/26` | AgentsSubnet = same |
 | PRIV 01a | `10.170.137.0/24` | AVDSubnet `10.170.137.0/25` (`.128/26` + `.192/26` reserved; not deployed as AzureFirewall* subnets) |
 | PERS 01a | `10.170.140.0/28` | AVDSubnet = same |
-| PERS 01b | `10.170.140.16/28` | â€¦ |
-| PERS 01c“01l | `10.170.140.{32â€¦176}/28` | step 16 |
+| PERS 01b | `10.170.140.16/28` | AVDSubnet = same |
+| PERS 01c-01l | `10.170.140.{32...176}/28` | step 16 |
 | MSH 01a | `10.170.141.0/24` | 001 `10.170.141.0/27`, 002 `.32/27`, 003 `.64/27`, 004 `.96/27`, 008 `.128/27`, 009 `.160/27` |
 | MSH 01b | `10.170.142.0/24` | 005 `10.170.142.0/25`, 006 `.128/27`, 007 `.160/27`, 999 `.192/27` |
 
@@ -636,12 +715,12 @@ Hub01 + Hub02 connections: `internet_security_enabled = false`.
 |---|---|---|
 | Mgmt | `10.170.241.64/26` | |
 | PRIV 01a | `10.170.228.0/22` | AVDSubnet `10.170.228.0/23` |
-| PERS 01a“01h | `10.170.160.0/21` â€¦ `10.170.216.0/21` | VNet = AVDSubnet |
+| PERS 01a-01h | `10.170.160.0/21` ... `10.170.216.0/21` | VNet = AVDSubnet |
 | PERS 01i | `10.170.224.0/22` | Robotics |
 | PERS 01j | `10.170.241.0/27` | P&D (adjacent to mgmt) |
 | PERS 01k | `10.170.232.0/21` | |
 | PERS 01l | `10.170.248.0/21` | Do not reuse `248/24` for Hub02 |
-| MSH 01a | `10.218.16.0/21` | 001“004 `/24`, 008 `/26` (`10.218.20.0/26`), 009 `/24` |
+| MSH 01a | `10.218.16.0/21` | 001-004 `/24`, 008 `/26` (`10.218.20.0/26`), 009 `/24` |
 | MSH 01b | `10.218.24.0/21` | 005 `/22`, 006/007/999 `/24` |
 
 ### 8.7 NSG custom rules (labs)
@@ -651,7 +730,7 @@ Azure default rules (65000+) stay platform-managed. Custom rules from legacy `pa
 | Spoke type | Pattern |
 |---|---|
 | PERS standard | Allow Delivery Optimization TCP/UDP 7680+3544 inbound within AVDSubnet; deny east-west pri 4000; deny TURN UDP 3478 outbound to `20.202.0.0/16` |
-| PERS 01i | + RPA ports 8181“8183, 8199“8200; no TURN deny |
+| PERS 01i | + RPA ports 8181-8183, 8199-8200; no TURN deny |
 | PERS 01k / 01l | Thin: TCP DO only + deny east-west |
 | PRIV | Same as PERS standard |
 | MSH | Same four-rule shape but scope = **VNet address space** (names `*-inbound-vnet`), duplicated on every AVDSubnet NSG |
@@ -668,7 +747,7 @@ On PERS / PRIV / MSH AVD subnets and mgmt AgentsSubnet: `Microsoft.Storage`, `Mi
 
 ### 9.1 Multisession — 30 pools
 
-Keys: BUs `001`“`009` + `999`, pools `00` / `01` / `02`.
+Keys: BUs `001`-`009` + `999`, pools `00` / `01` / `02`.
 
 | Property | Value |
 |---|---|
@@ -720,7 +799,7 @@ Keys: BUs `001`“`009` + `999`, pools `00` / `01` / `02`.
 | 999-01 | 15 | false |
 | 999-02 | 15 | false |
 
-**MSH workspace friendly names:** int `DevTest Shared Desktops` Â· prd `Shared Desktops`.  
+**MSH workspace friendly names:** int `DevTest Shared Desktops` / prd `Shared Desktops`.  
 **App group friendly names:** `{BU} ({bu}-{pool})` pattern.
 
 ### 9.2 Personal — 10 pools (default on)
@@ -741,7 +820,7 @@ From `PERS-General` + `PERS-Packaging` (Robot out — RDP broker, not AVD).
 | Max sessions | **9999** |
 | `start_vm_on_connect` | **true** |
 | Token hours | **240** (PSM1 pipeline default) |
-| Workspace friendly name | int `RTL-DESKTOPS` Â· prd `LIVE-DESKTOPS` |
+| Workspace friendly name | int `RTL-DESKTOPS` / prd `LIVE-DESKTOPS` |
 | App group friendly name | `Desktop {pool}` |
 | Personal scaling | Weekdays + weekend; StartVMOnConnect Enable all phases; deallocate after disconnect 90 / logoff 120; ramp-down 17:00; off-peak 20:00 |
 
@@ -781,13 +860,13 @@ Same personal shape as PERS (Direct / 9999 / start on connect / 240h / personal 
 | Full MSH set (`dcr-mult`, insights, fslp, wss) + custom tables `multfslp_CL` / `WSS_CL` | avd `dcr-msh` | When `law_id` set |
 | VM associations | PowerShell | |
 
-Hub / host-pool **inline** diagnostics in legacy were largely **Policy DINE** — not re-invented as ’legacy Bicep exactâ€ in TF.
+Hub / host-pool **inline** diagnostics in legacy were largely **Policy DINE** — not re-invented as legacy Bicep exact in TF.
 
 ### 10.3 Alerts (15 template types)
 
 | Family | What |
 |---|---|
-| Host-pool log (Ã—5 Ã— 27 pools) | Capacity â‰¥95%, unhealthy hosts, no healthy RDSH, health-check failures, user connection errors. Admin BU `999` excluded. |
+| Host-pool log (x5 x 27 pools) | Capacity >=95%, unhealthy hosts, no healthy RDSH, health-check failures, user connection errors. Admin BU `999` excluded. |
 | VM / quota log | High CPU, low memory, low disk (mult subs); start failures (mult+pers); vCPU quota mult 80% / pers 90% (needs UAMI) |
 | FSLogix metric | FileCapacity P2 (15% headroom) + P1 (5%) — needs `alert_fslogix_file_shares` map |
 | Activity log | Resource Health; Service Health P1; Service Health P2 — per scoped subscription |
@@ -812,8 +891,8 @@ Examples: `uksintvdimultilb01apf001`, `uksprdvdimultilb01bpf999`.
 
 | Keys | Lab | BUs | Subnet for ACL |
 |---|---|---|---|
-| 01a-001â€¦004,008,009 | 01a | those BUs | matching `AVDSubnet-{bu}` |
-| 01b-005â€¦007,999 | 01b | those BUs | matching `AVDSubnet-{bu}` |
+| 01a (BU 001-004, 008, 009) | 01a | those BUs | matching `AVDSubnet-{bu}` |
+| 01b (BU 005-007, 999) | 01b | those BUs | matching `AVDSubnet-{bu}` |
 
 Per STA: shares `profiles-{bu}-{pool}` for that BU’s three pools + `redirection`.
 
@@ -851,6 +930,7 @@ Name: `uks{env}vdipersblb{lab}` — StorageV2 Standard_LRS; Deny ACL + AVD + Age
 | `_global` | `vwan_id` | connectivity `virtual_wan_id` |
 | connectivity | `hub01_id`, `hub01_firewall_private_ip` | mgmt + labs |
 | connectivity | `hub02_id` | labs (MSH) |
+| connectivity | `hub03_id` (prd only) | nothing yet — reserved for future hub connections |
 | mgmt | `law_id` | labs (file diags), avd (HP/SP diags + DCR) |
 | mgmt | `agents_subnet_id` | labs ACLs |
 | labs | `fslogix_storage_account_names` / share IDs | mgmt `alert_fslogix_file_shares`; PS |
@@ -913,13 +993,15 @@ Offline until creds: `terraform init -backend=false` + `terraform validate` only
 | Apply order | `_global` → connectivity → mgmt → labs → avd |
 | PERS/PRIV path | Spoke → Hub01 (internet security + default-to-firewall) → AZFW / Routing Intent / ER |
 | MSH path | Dual hub + UDR: internet→Hub02 VPN; RFC1918/AzureCloud→Hub01 FW |
-| MSH pools | 30; token 175h; start_vm_on_connect **false**; Sat 01:00 agent updates; max 6“18 |
+| prd Hub03 | `10.218.72.0/22` bare spare vhub — prd only; no spokes/gateways yet |
+| prd hub parent | `10.218.64.0/20` → Hub01 `64.0/22`, Hub02 `68.0/22`, Hub03 `72.0/22` |
+| MSH pools | 30; token 175h; start_vm_on_connect **false**; Sat 01:00 agent updates; max 6-18 |
 | PERS / PRIV | 10 + 1; token 240h; start_vm_on_connect **true**; Direct; max 9999 |
-| FSLogix | 10 STAs; shares on `â€¦pf{bu}`; Deny ACL + SE; CMK |
+| FSLogix | 10 STAs; shares on `...pf{bu}`; Deny ACL + SE; CMK |
 | Lab KVs | **15** (2+12+1) |
 | Alerts | Deploy both envs; **enabled only in prd** |
 | DNS | `10.19.96.1`, `10.19.97.1` |
-| Still open by design | Hub02 VPN peer; FWP allow rules; TDA naming board; deploy-time GUIDs |
+| Still open by design | Hub02 VPN peer; FWP allow rules; TDA naming board; deploy-time GUIDs; Hub03 consumers |
 
 ---
 

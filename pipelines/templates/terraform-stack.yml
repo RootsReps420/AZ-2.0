@@ -31,6 +31,10 @@ parameters:
   - name: workingDirectory
     type: string
     default: ""
+  # IGMF sandbox: copy committed *.tfvars.example → terraform.tfvars (gitignored) before plan.
+  - name: seedIgmfTfvars
+    type: boolean
+    default: false
 
 jobs:
   - job: terraform_${{ parameters.envName }}_${{ parameters.stackName }}
@@ -42,6 +46,28 @@ jobs:
       stateKey: ${{ parameters.envName }}/${{ parameters.stackName }}.tfstate
     steps:
       - checkout: self
+
+      - task: Bash@3
+        displayName: Seed IGMF terraform.tfvars from examples
+        condition: and(succeeded(), eq('${{ parameters.seedIgmfTfvars }}', true))
+        inputs:
+          targetType: inline
+          script: |
+            set -euo pipefail
+            ROOT="$(Build.SourcesDirectory)"
+            if [ "${{ parameters.stackName }}" = "_global" ]; then
+              SRC="${ROOT}/environments/igmf/global.tfvars.example"
+              DST="${ROOT}/environments/_global/terraform.tfvars"
+            else
+              SRC="${ROOT}/$(stackDir)/terraform.tfvars.example"
+              DST="${ROOT}/$(stackDir)/terraform.tfvars"
+            fi
+            if [ ! -f "${SRC}" ]; then
+              echo "##vso[task.logissue type=error]Missing tfvars example: ${SRC}"
+              exit 1
+            fi
+            cp "${SRC}" "${DST}"
+            echo "Seeded ${DST} from ${SRC}"
 
       - task: TerraformInstaller@1
         displayName: Install Terraform

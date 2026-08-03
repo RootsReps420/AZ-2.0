@@ -32,6 +32,7 @@ stages:
           tfBackendContainer: $(tfBackendContainer)
           action: plan
           workingDirectory: environments/igmf/connectivity
+          seedIgmfTfvars: true
 
   - stage: apply
     displayName: Apply igmf/connectivity
@@ -49,3 +50,4 @@ stages:
           tfBackendContainer: $(tfBackendContainer)
           action: apply
           workingDirectory: environments/igmf/connectivity
+          seedIgmfTfvars: true

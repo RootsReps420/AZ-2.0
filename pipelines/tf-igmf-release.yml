@@ -58,3 +58,4 @@ stages:
           tfBackendContainer: $(tfBackendContainer)
           action: ${{ parameters.action }}
           workingDirectory: $(stackWorkingDirectory)
+          seedIgmfTfvars: true

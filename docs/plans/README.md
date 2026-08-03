@@ -10,8 +10,9 @@ live in the repo (the live working copies are authored in Cursor's plan mode).
 |---|------|--------|---------|
 | 01 | [VDI Terraform Platform Buildout](01-vdi-terraform-buildout.md) | Complete | Greenfield build of the full module catalogue (naming, tags, platform, core, avd, gallery) + `_global` and `uksouth/{dev,prod}` environment roots. |
 | 02 | [Azure 1.0 to Terraform Migration](02-azure-1.0-to-terraform-migration.md) | Scaffold complete | Port the legacy Azure 1.0 estate onto Terraform modules; re-platform hub-peering to vWAN; TDA naming; multi-subscription topology preserved. Phases 0–H scaffolded (offline validate). Live apply blocked on creds + deferred Hub02 VPN / AZFW Policy / GLB. Phase 0 inventory: [live](../legacy-live-inventory.md) · [dead](../legacy-dead-code.md) · [pipeline fate](../legacy-pipeline-fate.md). |
-| 03 | [Cursor account handoff](03-cursor-handoff.md) | Current | Context, locked decisions, prompt history, and starter message for continuing work on another Cursor account. |
-| 04 | [Gap analysis — legacy vs TF](04-gap-analysis-legacy-vs-tf.md) | In progress | Source-verified gaps; C01–C15 Wave A/B execution; Wave C/D backlog pending decisions. |
+| 03 | [Cursor account handoff](03-cursor-handoff.md) | Local only (gitignored) | Context, locked decisions, prompt history, and starter message for continuing work on another Cursor account. |
+| 04 | [Gap analysis — legacy vs TF](04-gap-analysis-legacy-vs-tf.md) | Complete | Source-verified parity; C01–C20 + Wave D + labCorePriv done. Deploy-time GUIDs remain tfvars. |
+| 05 | Sandbox deploy runthrough (`05-sandbox-deploy-runthrough.md`) | Local only (gitignored) | int (DT) first-deploy walkthrough — kept on disk, not pushed. |
 
 ## Conventions
 

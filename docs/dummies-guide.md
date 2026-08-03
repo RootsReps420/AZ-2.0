@@ -3,7 +3,7 @@
 **Audience:** engineers new to this monorepo.  
 **Status:** Reflects code on `main` after legacy-to-TF parity (C01-C20 + Wave D + labCorePriv) and **prd Hub03** (`modules/platform/hub-spare`).  
 **Environments in scope:** `int` (DT / dev test) and `prd` (production).  
-**Region:** `uksouth` only.
+**Region:** `uksouth` only (as-built). Multi-region (Italy North / Spain Central) is LLD future — not in these stacks yet.
 
 This is the practical LLD for **what Terraform actually deploys today**. Companion notes:
 
@@ -11,9 +11,14 @@ This is the practical LLD for **what Terraform actually deploys today**. Compani
 |---|---|
 | [address-plan-hubs.md](address-plan-hubs.md) | Hub CIDR decisions / rejects |
 | [variable-set.md](variable-set.md) | Tags / DNS / identity checklist |
-| [subscription-inventory.md](subscription-inventory.md) | SPNs, app IDs, known gallery GUIDs |
+| [subscription-inventory.md](subscription-inventory.md) | SPNs, app IDs, known gallery GUIDs — may still say TF env `prod`; live folder is **`prd`** |
+| [lld-terraform-summary.md](lld-terraform-summary.md) | LLD extract (some wording predates default-to-firewall / `prd` rename) |
+| [legacy-live-inventory.md](legacy-live-inventory.md) · [legacy-dead-code.md](legacy-dead-code.md) · [legacy-pipeline-fate.md](legacy-pipeline-fate.md) | Phase 0 inventory |
+| [legacy-to-tda-rename-map.md](legacy-to-tda-rename-map.md) · [packer-tda-rename-checklist.md](packer-tda-rename-checklist.md) | Naming / Packer rename helpers |
 | [plans/04-gap-analysis-legacy-vs-tf.md](plans/04-gap-analysis-legacy-vs-tf.md) | Parity execution status (complete) |
 | [plans/02-azure-1.0-to-terraform-migration.md](plans/02-azure-1.0-to-terraform-migration.md) | Migration context |
+
+Local-only (gitignored — stay on disk, not pushed): `docs/plans/03-cursor-handoff.md`, `docs/plans/05-sandbox-deploy-runthrough.md`.
 
 **Hard rule:** session-host VMs are **not** Terraform. Terraform builds network, platform services, storage, and AVD *objects*. PowerShell / AzDo places VMs and users.
 
@@ -517,13 +522,15 @@ Workloads used: `vdi-platform`, `vdi-pers`, `vdi-mult`, `vdi-priv`.
 
 ## 6. Provider and state
 
-Every live stack:
+Every live stack uses `azurerm >= 4.0.0, < 5.0.0` and Terraform `>= 1.5.0`. The **avd** stack also needs **`azapi`** (personal scaling schedules) and **`time`** (host-pool token rotation):
 
 ```hcl
 terraform {
   required_version = ">= 1.5.0"
   required_providers {
     azurerm = { source = "hashicorp/azurerm", version = ">= 4.0.0, < 5.0.0" }
+    azapi   = { source = "Azure/azapi",       version = ">= 2.0.0, < 3.0.0" } # avd only
+    time    = { source = "hashicorp/time",    version = ">= 0.9.0" }          # hostpool (via avd)
   }
   backend "azurerm" {}   # partial — RG / SA / container / key at init
 }
@@ -532,9 +539,16 @@ provider "azurerm" {
   features {}
   subscription_id = var.azure_subscription_id
 }
+# avd also declares: provider "azapi" {}
 ```
 
-Suggested state keys: `_global.tfstate`, `{env}-connectivity.tfstate`, `{env}-mgmt.tfstate`, `{env}-labs.tfstate`, `{env}-avd.tfstate`.
+State keys match [`pipelines/templates/terraform-stack.yml`](../pipelines/templates/terraform-stack.yml): **`{env}/{stack}.tfstate`**
+
+| Stack | Example key |
+|---|---|
+| `_global` (via `tf-release` with `envName=int`) | `int/_global.tfstate` |
+| connectivity | `int/connectivity.tfstate` / `prd/connectivity.tfstate` |
+| mgmt / labs / avd | `{env}/mgmt.tfstate`, `{env}/labs.tfstate`, `{env}/avd.tfstate` |
 
 Each stack’s `azure_subscription_id` is the **subscription that owns that stack’s resources**. Legacy estate is multi-subscription (hub / mgmt / avd / lab). Cutover preserves that: one provider context per root.
 
@@ -572,6 +586,8 @@ prd hubs share parent **`10.218.64.0/20`** (three consecutive `/22` slices). See
 
 **Terraform wiring (prd):** `module.hub_secured` → Hub01, `module.hub_unsecured` → Hub02, `module.hub_spare` → Hub03. Only Hub01/02 IDs flow into `mgmt` and `labs` today.
 
+**int has no Hub03** — no `hub-spare` module call and no `hub03_address_prefix` variable. Hub03 lands only when INT Azure 2.0 hub ranges are agreed.
+
 Do **not** use `10.170.248.0/24` as a hub prefix (collides with PERS `01l` `10.170.248.0/21`).  
 prd hubs must stay distinct from int hubs on the shared `_global` vWAN.
 
@@ -602,32 +618,38 @@ Service endpoints on AgentsSubnet: `Microsoft.Storage`, `Microsoft.KeyVault`.
 NSG: deny east-west using AgentsSubnet CIDR (priority 4000).  
 Route table: `default-to-firewall` → Hub01 firewall private IP when IP is passed.
 
-**Outputs → next:** `law_id`, `agents_subnet_id`, alert UAMI / action group IDs.
+**Outputs → next:** `law_id`, `agents_subnet_id`, `vnet_id`, `alert_action_group_ids`, `alert_uami_id` / `alert_uami_principal_id`.
 
 ### 7.4 `labs`
 
 | Resource | Notes |
 |---|---|
 | PERS spokes 01a-01l | Hub01; `default-to-firewall` UDR; AVDSubnet |
-| PRIV spoke 01a | Same spoke pattern; **no local AZFW** (legacy had one; Hub01 is next hop). FW CIDR space reserved in VNet address space only |
+| PRIV spoke 01a | Same spoke pattern; **no local AZFW** (legacy had one; Hub01 is next hop). FW CIDR space reserved in VNet address space only. Toggle: empty `priv_spokes` / flags |
 | MSH spokes 01a/01b | Dual-hub + three-rule UDR |
-| 10 FSLogix STAs + shares | Per-BU placement; CMK via Multi KVs |
+| 10 FSLogix STAs + shares | Per-BU placement; gated by `enable_fslogix` |
+| FSLogix CMK | Per-STA UAMI (`{legacyStaName}-msi`) + RSA-4096 key `{sta}-sa-cmk` on that lab’s **Multi** KV; wired when `enable_lab_keyvaults` |
 | 15 lab Key Vaults | 2 Multi + 12 PERS + 1 PRIV (when priv + flags on) |
-| 12 PERS blob STAs | StorageV2 Standard_LRS; no CMK |
+| 12 PERS blob STAs | StorageV2 Standard_LRS; Deny ACL; **no CMK** |
 
 DNS on all lab VNets: `10.19.96.1`, `10.19.97.1`.
+
+**Outputs → next:** VNet ID maps, FSLogix STA names, lab KV IDs, PERS blob STA names, CMK identity IDs — see §12. No file-share ID outputs (share names stay inside the FSLogix module; alert scopes are built in mgmt tfvars).
 
 ### 7.5 `avd`
 
 | Resource | Notes |
 |---|---|
-| MSH workspace + **30** host pools + scaling (+ decom siblings) | See §9 |
-| PERS workspace + **10** host pools + personal scaling | Default **on** (`enable_pers_host_pools = true`) |
-| PRIV workspace + **1** host pool + personal scaling | Default **on** (`enable_priv_host_pools = true`) |
+| MSH workspace + **30** host pools | Pooled; token rotation via `time` provider |
+| MSH scaling | One **standard** plan + one **decom** sibling per pool (`scaling_plan_enabled = false` on decom) |
+| PERS workspace + **10** host pools + personal scaling | Default **on** (`enable_pers_host_pools = true`); personal schedules via **azapi** |
+| PRIV workspace + **1** host pool + personal scaling | Default **on** (`enable_priv_host_pools = true`); azapi schedules; **no stack outputs yet** for PRIV |
 | AVD Key Vault | `keyvault_unique_id` default int `avdint1` / prd `avdprd1` |
 | Gallery + **50** image definitions | Versions = Packer |
-| MSH DCR/DCE/tables | When `law_id` set |
+| MSH DCR/DCE/tables | When `law_id` set (`modules/platform/dcr-msh`) |
 | WVD Power On Off RAs | When principal set |
+
+**Outputs → next:** MSH `registration_tokens` / `hostpool_ids`; PERS `pers_registration_tokens` / `pers_hostpool_ids`; gallery + image definition names; `msh_dcr_ids`; `keyvault_id`.
 
 ---
 
@@ -925,17 +947,29 @@ Name: `uks{env}vdipersblb{lab}` — StorageV2 Standard_LRS; Deny ACL + AVD + Age
 
 ## 12. Wiring map (outputs → inputs)
 
+Stacks do **not** use remote-state data sources. Copy outputs into the next stack’s `terraform.tfvars` (or AzDo pipeline vars).
+
 | From | Output | Into |
 |---|---|---|
 | `_global` | `vwan_id` | connectivity `virtual_wan_id` |
 | connectivity | `hub01_id`, `hub01_firewall_private_ip` | mgmt + labs |
-| connectivity | `hub02_id` | labs (MSH) |
+| connectivity | `hub02_id` | labs (MSH dual-hub) |
 | connectivity | `hub03_id` (prd only) | nothing yet — reserved for future hub connections |
-| mgmt | `law_id` | labs (file diags), avd (HP/SP diags + DCR) |
-| mgmt | `agents_subnet_id` | labs ACLs |
-| labs | `fslogix_storage_account_names` / share IDs | mgmt `alert_fslogix_file_shares`; PS |
-| labs | `pers_vnet_ids`, `msh_vnet_ids`, `priv_vnet_ids` | PS placement |
-| avd | `registration_tokens` (sensitive), `hostpool_ids`, `gallery_name`, `msh_dcr_ids` | PS / Packer |
+| connectivity | `firewall_policy_id`, `resource_group_name` | ops / diagnostics reference |
+| mgmt | `law_id` | labs (file diags), avd (HP/SP diags + `dcr-msh`) |
+| mgmt | `agents_subnet_id` | labs storage/KV Deny ACL allow-list |
+| mgmt | `vnet_id`, `alert_action_group_ids`, `alert_uami_id`, `alert_uami_principal_id` | ops / ARG quota alerts |
+| labs | `pers_vnet_ids`, `priv_vnet_ids`, `msh_vnet_ids` | PowerShell placement |
+| labs | `fslogix_storage_account_names` | mgmt `alert_fslogix_file_shares` (build share scopes in tfvars); PS |
+| labs | `lab_keyvault_mult_ids`, `lab_keyvault_pers_ids`, `lab_keyvault_priv_ids` | PS / CMK ops |
+| labs | `pers_blob_storage_account_names` | PS |
+| labs | `fslogix_cmk_identity_ids` | ops |
+| avd | `registration_tokens`, `hostpool_ids`, `hostpool_names` (MSH) | PowerShell session-host pipelines |
+| avd | `pers_registration_tokens`, `pers_hostpool_ids` | PowerShell PERS pipelines |
+| avd | `gallery_name`, `image_definition_names` | Packer |
+| avd | `msh_dcr_ids`, `workspace_id`, `keyvault_id` | PS associations / ops |
+
+**Gaps by design:** PRIV host pools deploy when enabled but have **no stack outputs** yet. Labs do **not** export file-share IDs — share names live inside `storage-fslogix`; wire alert metric scopes manually in mgmt tfvars.
 
 ### 12.1 Known subscription GUIDs (starting points — confirm)
 
@@ -970,6 +1004,7 @@ Hub / mgmt / lab subscription GUIDs: still `TODO(deploy)` in inventory — fill 
 
 | Optional for full platform | Stack |
 |---|---|
+| `hub03_address_prefix` | prd connectivity only (default `10.218.72.0/22`) |
 | `expressroute_circuit_peering_id` | connectivity |
 | Firewall Policy allow rules | connectivity / Policy |
 | Hub02 VPN site + connection | connectivity (not coded) |
@@ -991,17 +1026,20 @@ Offline until creds: `terraform init -backend=false` + `terraform validate` only
 | First env | `int` |
 | Prod env folder | `prd` |
 | Apply order | `_global` → connectivity → mgmt → labs → avd |
+| State keys | `{env}/{stack}.tfstate` (e.g. `int/connectivity.tfstate`) |
+| avd providers | `azurerm` + `azapi` (personal SP schedules) + `time` (tokens) |
 | PERS/PRIV path | Spoke → Hub01 (internet security + default-to-firewall) → AZFW / Routing Intent / ER |
 | MSH path | Dual hub + UDR: internet→Hub02 VPN; RFC1918/AzureCloud→Hub01 FW |
 | prd Hub03 | `10.218.72.0/22` bare spare vhub — prd only; no spokes/gateways yet |
 | prd hub parent | `10.218.64.0/20` → Hub01 `64.0/22`, Hub02 `68.0/22`, Hub03 `72.0/22` |
-| MSH pools | 30; token 175h; start_vm_on_connect **false**; Sat 01:00 agent updates; max 6-18 |
-| PERS / PRIV | 10 + 1; token 240h; start_vm_on_connect **true**; Direct; max 9999 |
-| FSLogix | 10 STAs; shares on `...pf{bu}`; Deny ACL + SE; CMK |
+| MSH pools | 30; token 175h; start_vm_on_connect **false**; Sat 01:00 agent updates; max 6-18; std + decom scaling plans |
+| PERS / PRIV | 10 + 1; token 240h; start_vm_on_connect **true**; Direct; max 9999; PRIV has **no stack outputs** yet |
+| FSLogix | 10 STAs; shares on `...pf{bu}`; Deny ACL + SE; CMK via Multi KV + per-STA UAMI |
+| PERS blobs | 12 STAs; no CMK |
 | Lab KVs | **15** (2+12+1) |
 | Alerts | Deploy both envs; **enabled only in prd** |
 | DNS | `10.19.96.1`, `10.19.97.1` |
-| Still open by design | Hub02 VPN peer; FWP allow rules; TDA naming board; deploy-time GUIDs; Hub03 consumers |
+| Still open by design | Hub02 VPN peer; FWP allow rules; TDA naming board; deploy-time GUIDs; Hub03 consumers; PRIV avd outputs |
 
 ---
 
@@ -1011,15 +1049,22 @@ Companion to §2 (what each module *is*). This table is what each module *return
 
 | Module | Primary outputs |
 |---|---|
-| `modules/platform/vwan` | `vwan_id` |
+| `modules/naming` | `name`, `abbreviation`, `region_short` |
+| `modules/tags` | `tags` |
+| `modules/platform/vwan` | `vwan_id`, `vwan_name` |
 | `modules/platform/hub-secured` | `hub_id`, `firewall_private_ip`, `firewall_id`, `express_route_gateway_id` |
-| `modules/platform/hub-unsecured` | `hub_id`, `vpn_gateway_id` |
+| `modules/platform/hub-unsecured` | `hub_id`, `hub_name`, `vpn_gateway_id` |
 | `modules/platform/hub-spare` | `hub_id`, `hub_name` (no spoke consumers yet) |
-| `modules/platform/firewall-policy` | `policy_id` |
-| `modules/platform/management` | `law_id`, DCE/DCR ids, `action_group_ids` |
-| `modules/platform/dcr-msh` | `dcr_ids` map |
-| `modules/core/spoke-pers` | `vnet_id`, `subnet_ids`, `hub_connection_id`, `route_table_id` |
-| `modules/core/spoke-msh` | `vnet_id`, `subnet_ids`, `hub01_connection_id`, `hub02_connection_id`, `route_table_id` |
-| `modules/avd/hostpool` | `hostpool_id`, `registration_token` |
-| `modules/avd/workspace` | `workspace_id` |
-| `modules/gallery/gallery` | gallery name / id |
+| `modules/platform/firewall-policy` | `policy_id`, `policy_name`, `ip_group_ids` |
+| `modules/platform/management` | `law_id`, `law_workspace_id`, `law_name`, `data_collection_endpoint_id`, `avd_insights_dcr_id`, `action_group_ids` |
+| `modules/platform/dcr-msh` | `dcr_ids` map; `dcr_main_id`, `dcr_insights_id`, `dcr_fsl_id`, `dcr_wss_id`; `data_collection_endpoint_id` |
+| `modules/core/spoke-pers` | `vnet_id`, `vnet_name`, `subnet_ids`, `nsg_ids`, `hub_connection_id`, `route_table_id` |
+| `modules/core/spoke-msh` | `vnet_id`, `subnet_ids`, `nsg_ids`, `route_table_id`, `hub01_connection_id`, `hub02_connection_id` |
+| `modules/core/keyvault` | `keyvault_id`, `keyvault_uri`, `keyvault_name`, `cmk_key_ids` |
+| `modules/core/storage-fslogix` | `storage_account_id`, `storage_account_name`, `primary_file_host`, `file_share_names`, `file_share_urls` |
+| `modules/core/storage-blob` | `storage_account_id`, `storage_account_name` |
+| `modules/avd/hostpool` | `hostpool_id`, `hostpool_name`, `registration_token` (sensitive), `registration_token_expiration` |
+| `modules/avd/workspace` | `workspace_id`, `workspace_name`, `app_group_ids` |
+| `modules/avd/scalingplan` | `scaling_plan_id`, `scaling_plan_name`, `personal_schedule_ids` |
+| `modules/gallery/gallery` | `gallery_id`, `gallery_name` |
+| `modules/gallery/image-definition` | `image_definition_id`, `image_definition_name` |

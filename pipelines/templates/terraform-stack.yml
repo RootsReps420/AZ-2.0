@@ -2,6 +2,9 @@
 # Expects variables: envName, stackName, azureServiceConnection, agentPool,
 #   tfBackendResourceGroup, tfBackendStorageAccount, tfBackendContainer,
 #   terraformVersion (optional)
+#
+# Auth: AzureCLI@2 logs in as the service connection SP. azurerm does NOT accept
+# Azure CLI auth for service principals — export ARM_* from addSpnToEnvironment.
 
 parameters:
   - name: envName
@@ -49,11 +52,16 @@ jobs:
         displayName: Terraform init
         inputs:
           azureSubscription: ${{ parameters.azureServiceConnection }}
+          addSpnToEnvironment: true
           scriptType: bash
           scriptLocation: inlineScript
           workingDirectory: $(Build.SourcesDirectory)/$(stackDir)
           inlineScript: |
             set -euo pipefail
+            export ARM_CLIENT_ID="$servicePrincipalId"
+            export ARM_CLIENT_SECRET="$servicePrincipalKey"
+            export ARM_TENANT_ID="$tenantId"
+            export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
             terraform init -input=false \
               -backend-config="resource_group_name=${{ parameters.tfBackendResourceGroup }}" \
               -backend-config="storage_account_name=${{ parameters.tfBackendStorageAccount }}" \
@@ -64,11 +72,16 @@ jobs:
         displayName: Terraform validate
         inputs:
           azureSubscription: ${{ parameters.azureServiceConnection }}
+          addSpnToEnvironment: true
           scriptType: bash
           scriptLocation: inlineScript
           workingDirectory: $(Build.SourcesDirectory)/$(stackDir)
           inlineScript: |
             set -euo pipefail
+            export ARM_CLIENT_ID="$servicePrincipalId"
+            export ARM_CLIENT_SECRET="$servicePrincipalKey"
+            export ARM_TENANT_ID="$tenantId"
+            export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
             terraform validate
 
       - task: AzureCLI@2
@@ -76,11 +89,16 @@ jobs:
         condition: and(succeeded(), ne('${{ parameters.action }}', 'destroy'))
         inputs:
           azureSubscription: ${{ parameters.azureServiceConnection }}
+          addSpnToEnvironment: true
           scriptType: bash
           scriptLocation: inlineScript
           workingDirectory: $(Build.SourcesDirectory)/$(stackDir)
           inlineScript: |
             set -euo pipefail
+            export ARM_CLIENT_ID="$servicePrincipalId"
+            export ARM_CLIENT_SECRET="$servicePrincipalKey"
+            export ARM_TENANT_ID="$tenantId"
+            export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
             terraform plan -input=false -out=tfplan
 
       - task: AzureCLI@2
@@ -88,11 +106,16 @@ jobs:
         condition: and(succeeded(), eq('${{ parameters.action }}', 'apply'))
         inputs:
           azureSubscription: ${{ parameters.azureServiceConnection }}
+          addSpnToEnvironment: true
           scriptType: bash
           scriptLocation: inlineScript
           workingDirectory: $(Build.SourcesDirectory)/$(stackDir)
           inlineScript: |
             set -euo pipefail
+            export ARM_CLIENT_ID="$servicePrincipalId"
+            export ARM_CLIENT_SECRET="$servicePrincipalKey"
+            export ARM_TENANT_ID="$tenantId"
+            export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
             terraform apply -input=false -auto-approve tfplan
 
       - task: AzureCLI@2
@@ -100,9 +123,14 @@ jobs:
         condition: and(succeeded(), eq('${{ parameters.action }}', 'destroy'))
         inputs:
           azureSubscription: ${{ parameters.azureServiceConnection }}
+          addSpnToEnvironment: true
           scriptType: bash
           scriptLocation: inlineScript
           workingDirectory: $(Build.SourcesDirectory)/$(stackDir)
           inlineScript: |
             set -euo pipefail
+            export ARM_CLIENT_ID="$servicePrincipalId"
+            export ARM_CLIENT_SECRET="$servicePrincipalKey"
+            export ARM_TENANT_ID="$tenantId"
+            export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
             terraform destroy -input=false -auto-approve

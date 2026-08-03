@@ -1,5 +1,6 @@
-# environments/prd/connectivity — Hub01 + Hub02 + Hub03 + baseline firewall policy
+# environments/prd/connectivity — Hub01 + Hub02 + baseline firewall policy
 # Azure 2.0 hub address plan: 10.218.64.0/20 as three /22 hubs (see docs/address-plan-hubs.md).
+# Hub03 spare (10.218.72.0/22) is kept in code but NOT deployed — see commented module below.
 
 locals {
   location = var.location
@@ -93,19 +94,21 @@ module "hub_unsecured" {
   tags = module.tags.tags
 }
 
-# Hub03 — spare bare virtual hub (no FW/VPN/ER/spokes). Mesh member of the shared
-# vWAN; private traffic intended via Hub01 Routing Intent when later used.
-module "hub_spare" {
-  source = "../../../modules/platform/hub-spare"
-
-  name                = "hub03"
-  resource_group_name = azurerm_resource_group.connectivity.name
-  location            = local.location
-  subscription_id     = var.subscription_code
-  environment         = local.env
-
-  virtual_wan_id = var.virtual_wan_id
-  address_prefix = var.hub03_address_prefix
-
-  tags = module.tags.tags
-}
+# SPARE (not deployed): Hub03 bare hub — reserved CIDR var.hub03_address_prefix
+# (default 10.218.72.0/22). Uncomment module "hub_spare" when a region needs it.
+# Module is region-agnostic (uses var.location). No FW/VPN/ER/spokes.
+#
+# module "hub_spare" {
+#   source = "../../../modules/platform/hub-spare"
+#
+#   name                = "hub03"
+#   resource_group_name = azurerm_resource_group.connectivity.name
+#   location            = local.location
+#   subscription_id     = var.subscription_code
+#   environment         = local.env
+#
+#   virtual_wan_id = var.virtual_wan_id
+#   address_prefix = var.hub03_address_prefix
+#
+#   tags = module.tags.tags
+# }

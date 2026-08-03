@@ -8,7 +8,7 @@ This replaces the legacy Azure 1.0 Bicep deploy path for **platform infrastructu
 
 | Layer | Owns |
 |---|---|
-| **Connectivity** | Shared Virtual WAN, Hub01 (secured: AZFW + ExpressRoute + Routing Intent), Hub02 (VPN gateway shell), Hub03 spare bare hub (**prd** only) |
+| **Connectivity** | Shared Virtual WAN, Hub01 (secured: AZFW + ExpressRoute + Routing Intent), Hub02 (VPN gateway shell). Hub03 spare CIDR/module kept in code but **not deployed** until uncommented |
 | **Management** | Log Analytics, alerts, action group, mgmt AgentsSubnet spoke |
 | **Labs** | PERS / PRIV / MSH spoke VNets, FSLogix storage, lab Key Vaults, PERS blobs |
 | **AVD** | Host pools, workspaces, scaling plans, compute gallery + image **definitions**, MSH DCRs |
@@ -21,7 +21,7 @@ This replaces the legacy Azure 1.0 Bicep deploy path for **platform infrastructu
 Virtual WAN (_global)
    ├─ Hub01 secured  →  mgmt + PERS + PRIV   (firewall / Routing Intent / ER)
    ├─ Hub02 unsecured → MSH also attaches    (internet via VPN/Proxy path; RFC1918 → Hub01 FW)
-   └─ Hub03 spare (prd) → bare mesh member   (no spokes yet; private via Hub01 FW if later used)
+   └─ Hub03 spare     → config only (commented); CIDR 10.218.72.0/22 reserved — not deployed
 ```
 
 Environments in scope: **`int`** (DT) and **`prd`**. Region today: **uksouth**.

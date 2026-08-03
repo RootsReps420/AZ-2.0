@@ -23,7 +23,8 @@ output "hub02_id" {
   value       = module.hub_unsecured.hub_id
 }
 
-output "hub03_id" {
-  description = "Spare bare virtual hub (Hub03) resource ID. No spoke consumers yet."
-  value       = module.hub_spare.hub_id
-}
+# SPARE (not deployed): uncomment with module.hub_spare in main.tf when Hub03 is enabled.
+# output "hub03_id" {
+#   description = "Spare bare virtual hub (Hub03) resource ID. No spoke consumers yet."
+#   value       = module.hub_spare.hub_id
+# }

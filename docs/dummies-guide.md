@@ -1,7 +1,7 @@
 # VDI Terraform — as-built low-level design
 
 **Audience:** engineers new to this monorepo.  
-**Status:** Reflects code on `main` after legacy-to-TF parity (C01-C20 + Wave D + labCorePriv) and **prd Hub03** (`modules/platform/hub-spare`).  
+**Status:** Reflects code on `main` after legacy-to-TF parity (C01-C20 + Wave D + labCorePriv). **Hub03** = spare CIDR + `hub-spare` module in code — **not deployed** until uncommented.  
 **Environments in scope:** `int` (DT / dev test) and `prd` (production).  
 **Region:** `uksouth` only (as-built). Multi-region (Italy North / Spain Central) is LLD future — not in these stacks yet.
 
@@ -50,13 +50,13 @@ Port the legacy Azure 1.0 VDI estate (Bicep + PowerShell across platform / pers 
 |---|---|---|
 | **Personal (PERS)** + **Privileged (PRIV)** + **mgmt** | **Hub01 (secured)** | Azure Firewall + Routing Intent (Internet + Private → firewall). ExpressRoute gateway on Hub01. |
 | **Multisession (MSH)** | **Hub01 + Hub02** | Explicit UDR: internet `0.0.0.0/0` → Hub02 VPN (Palo Alto Proxy path); RFC1918 + `AzureCloud` → Hub01 firewall IP. Hub connections have `internet_security_enabled = false` so Routing Intent does not override the UDR. |
-| **Nothing today** | **Hub03 (spare, prd only)** | Bare virtual hub on the shared vWAN — **no firewall, no VPN/ER, no spokes**. Address reservation + full-mesh membership only. Not a live VDI traffic path until something is attached later. |
+| **Nothing (not applied)** | **Hub03 (spare)** | Reserved CIDR + `hub-spare` module kept in code; `module "hub_spare"` **commented out** in `prd/connectivity`. No Azure resource until uncommented. Region-agnostic when enabled. |
 
 ### 1.2 City metaphor (one glance)
 
 | City part | In this estate |
 |---|---|
-| Motorway interchange | Virtual WAN + Hub01 + Hub02 (+ Hub03 spare on **prd**) |
+| Motorway interchange | Virtual WAN + Hub01 + Hub02 (Hub03 spare = config only, not deployed) |
 | Neighbourhoods | Spokes (mgmt / PERS / PRIV / MSH VNets) |
 | Streets | Subnets (AgentsSubnet, AVDSubnet, AVDSubnet-00x) |
 | Estate office rules | AVD host pools, workspaces, scaling plans |
@@ -75,7 +75,7 @@ flowchart TB
     FWP[Firewall Policy - baseline / stub rules]
     H1[Hub01 Secured]
     H2[Hub02 Unsecured]
-    H3[Hub03 Spare - prd only]
+    H3[Hub03 Spare - config only / not deployed]
     AZFW[Azure Firewall AZFW_Hub]
     ER[ExpressRoute Gateway]
     VPN[VPN Gateway shell]
@@ -111,7 +111,7 @@ flowchart TB
 
   VWAN --> H1
   VWAN --> H2
-  VWAN --> H3
+  VWAN -.->|spare not applied| H3
   H1 --> AGENTS
   H1 --> PERS
   H1 --> PRIV
@@ -224,39 +224,40 @@ legacy/                    # Local reference clones only (gitignored / untracked
 
 Ignore for cutover: `environments/uksouth/{dev,prod}`, `environments/prod/` (naming stub). Live folder/env segment is **`prd`**, not `prod`.
 
-### 1.9 Hub03 (spare) — what changed and what it actually is
+### 1.9 Hub03 (spare) — config present, **not deployed**
 
-**Recent repo change:** production connectivity now deploys a **third virtual hub** (Hub03) via [`modules/platform/hub-spare`](../modules/platform/hub-spare). Integration (`int`) still has only Hub01 + Hub02 until INT Azure 2.0 hub ranges are agreed.
+Hub03 is a **spare blueprint**: reserved CIDR + reusable module, **not** created with Hub01/Hub02 until you uncomment it. Region-agnostic (module takes `location`). No live Azure resource today — IGMF / int / prd connectivity apply only Hub01 + Hub02.
 
-#### What Terraform creates (prd `connectivity` only)
+#### What stays in code (not applied)
 
 | Piece | Detail |
 |---|---|
-| Module call | `module "hub_spare"` in [`environments/prd/connectivity/main.tf`](../environments/prd/connectivity/main.tf) |
-| Variable | `hub03_address_prefix` — default **`10.218.72.0/22`** in [`variables.tf`](../environments/prd/connectivity/variables.tf) |
-| Azure resource | Single `azurerm_virtual_hub` attached to the shared `_global` Virtual WAN |
-| Output | `hub03_id` — **no downstream stack consumes it yet** (no spokes, no gateways) |
+| Module package | [`modules/platform/hub-spare`](../modules/platform/hub-spare) — keep; do not delete |
+| Module call | **`module "hub_spare"` commented out** in [`environments/prd/connectivity/main.tf`](../environments/prd/connectivity/main.tf) |
+| Variable | `hub03_address_prefix` — default **`10.218.72.0/22`** (reserved / not deployed) |
+| Output | `hub03_id` — **commented out** (cannot reference a non-existent module) |
 
-#### What Hub03 deliberately does **not** have
+#### What Hub03 would not have (when enabled)
 
-- No Firewall Policy attachment
-- No Azure Firewall SKU
-- No Routing Intent
-- No ExpressRoute gateway
-- No VPN gateway
-- No `azurerm_virtual_hub_connection` (no lab/mgmt/AVD spokes)
+- No Firewall Policy attachment, AZFW, Routing Intent, ER/VPN gateways, or spoke connections
 
-So today Hub03 is **not** a traffic path for VDI. Session hosts still use Hub01 (PERS/PRIV/mgmt) or Hub01+Hub02 (MSH) exactly as before.
+Session hosts still use Hub01 (PERS/PRIV/mgmt) or Hub01+Hub02 (MSH) exactly as before.
 
-#### Why it exists
+#### Why the CIDR exists
 
-Azure 2.0 production reserves a **parent `/20`** for all hub address space and slices it into three `/22` hubs. Hub03 holds the third slice so:
+Azure 2.0 production reserves a **parent `/20`** and slices three `/22` hubs. The third slice stays reserved in code so:
 
-1. Addresses stay **unique** on the shared vWAN (int + prd both attach to `_global`).
-2. A future gateway or spoke can attach without re-carving the `10.218.64.0/20` block.
-3. When something does attach, **private** traffic can still be steered through **Hub01** Azure Firewall (Routing Intent on Hub01) — Hub03 is mesh-only until then.
+1. Addresses stay **unique** on the shared vWAN when Hub03 is later enabled.
+2. A future region/gateway/spoke can attach without re-carving `10.218.64.0/20`.
+3. When enabled, **private** traffic can still steer through **Hub01** AZFW (Routing Intent) — Hub03 would be mesh-only until spokes/gateways attach.
 
-**Billing note:** an empty virtual hub still incurs virtual hub capacity charges even with no spokes.
+**Billing note:** an empty virtual hub incurs capacity charges **once deployed**. Comment-out avoids that until needed.
+
+#### How to enable later
+
+1. Uncomment `module "hub_spare"` in `prd/connectivity/main.tf` (or copy the pattern into another env/region root).
+2. Uncomment `output "hub03_id"` in `outputs.tf`.
+3. Plan/apply connectivity. Module is region-agnostic via `var.location`.
 
 #### prd hub IP layout (Azure 2.0)
 
@@ -264,26 +265,26 @@ Full detail: [`docs/address-plan-hubs.md`](address-plan-hubs.md).
 
 ```text
 10.218.64.0/20   prd hub parent (10.218.64.0 – 10.218.75.255)
-├── 10.218.64.0/22   Hub01  secured   AZFW + Routing Intent + ExpressRoute
-├── 10.218.68.0/22   Hub02  unsecured VPN gateway shell (MSH internet path)
-└── 10.218.72.0/22   Hub03  spare     bare vhub — mesh + address reservation only
+├── 10.218.64.0/22   Hub01  secured   AZFW + Routing Intent + ExpressRoute  (deployed)
+├── 10.218.68.0/22   Hub02  unsecured VPN gateway shell                     (deployed)
+└── 10.218.72.0/22   Hub03  spare     reserved CIDR — not deployed until uncommented
 ```
 
-| Slice | Usable host range (approx.) | Module |
-|---|---|---|
-| `10.218.64.0/22` | `10.218.64.0` – `10.218.67.255` | `hub-secured` |
-| `10.218.68.0/22` | `10.218.68.0` – `10.218.71.255` | `hub-unsecured` |
-| `10.218.72.0/22` | `10.218.72.0` – `10.218.75.255` | `hub-spare` |
+| Slice | Usable host range (approx.) | Module | Deployed? |
+|---|---|---|---|
+| `10.218.64.0/22` | `10.218.64.0` – `10.218.67.255` | `hub-secured` | Yes |
+| `10.218.68.0/22` | `10.218.68.0` – `10.218.71.255` | `hub-unsecured` | Yes |
+| `10.218.72.0/22` | `10.218.72.0` – `10.218.75.255` | `hub-spare` | **No** (commented) |
 
 **Do not use** `10.170.248.0/24` as any hub prefix — it collides with prd PERS spoke `01l` (`10.170.248.0/21`).
 
-#### int hub IPs (unchanged — no Hub03 yet)
+#### int hub IPs (unchanged — no Hub03)
 
 | Hub | CIDR | Role |
 |---|---|---|
 | Hub01 | `10.170.245.0/24` | Secured |
 | Hub02 | `10.170.246.0/24` | Unsecured |
-| Hub03 | — | Not deployed |
+| Hub03 | — | Not in int (and spare not applied on prd either) |
 
 ---
 
@@ -306,7 +307,7 @@ Every environment stack is thin glue: it calls these modules with env-specific m
 | [`modules/platform/firewall-policy`](../modules/platform/firewall-policy) | Creates **Firewall Policy** + optional IP groups + rule collection groups. Today: DNS proxy on, **rule collections stub/empty** (full Secure Hub rules → Azure Policy later). | `connectivity` → attached to Hub01 firewall |
 | [`modules/platform/hub-secured`](../modules/platform/hub-secured) | **Hub01**: virtual hub + AZFW_Hub + ExpressRoute gateway + Routing Intent (Internet + Private → firewall). Outputs `hub_id`, `firewall_private_ip`. | `connectivity` |
 | [`modules/platform/hub-unsecured`](../modules/platform/hub-unsecured) | **Hub02**: virtual hub + VPN gateway shell (no firewall, no Routing Intent). VPN site/connection not added yet. | `connectivity` |
-| [`modules/platform/hub-spare`](../modules/platform/hub-spare) | **Hub03** (prd): bare spare virtual hub — no FW/VPN/ER/spokes. vWAN mesh membership + address reservation only until something attaches. | `prd/connectivity` |
+| [`modules/platform/hub-spare`](../modules/platform/hub-spare) | **Hub03** spare blueprint: bare virtual hub — no FW/VPN/ER/spokes. CIDR reserved; enable by uncommenting. | **none today** (commented in `prd/connectivity`) |
 
 ### 2.3 Platform — observability
 
@@ -340,7 +341,7 @@ Every environment stack is thin glue: it calls these modules with env-specific m
 ```text
 _global        → naming, tags, vwan
 connectivity   → naming, tags, firewall-policy, hub-secured, hub-unsecured
-                 (+ hub-spare on prd for Hub03)
+                 (hub-spare = commented spare; not in apply)
 mgmt           → naming, tags, management, spoke-pers (+ alert/APR/UAMI resources in root)
 labs           → naming, tags, spoke-pers, spoke-msh, storage-fslogix, storage-blob, keyvault
 avd            → naming, tags, hostpool, workspace, scalingplan, gallery, image-definition,
@@ -574,7 +575,7 @@ Each stack’s `azure_subscription_id` is the **subscription that owns that stac
 | Firewall policy | SKU Standard; DNS proxy **on**; servers = corporate DNS; **rule collections empty** (full Secure Hub rules → Azure Policy / later work) |
 | Hub01 (`hub-secured`) | Virtual hub + **AZFW_Hub** + ExpressRoute gateway (`scale_units = 1`) + **Routing Intent**: InternetTraffic + PrivateTraffic → firewall |
 | Hub02 (`hub-unsecured`) | Virtual hub + VPN gateway shell (`scale_unit = 1`, routing preference Microsoft Network). **No VPN site / connection yet** |
-| Hub03 (`hub-spare`, **prd only**) | Bare virtual hub — no FW/VPN/ER/spokes. Address reservation + vWAN mesh; private traffic via Hub01 FW when later used. Not a live VDI path today. |
+| Hub03 (`hub-spare`) | **Not in apply** — CIDR var retained; `module "hub_spare"` commented out. Uncomment to deploy (region-agnostic). |
 | ER circuit connection | Only if `expressroute_circuit_peering_id` set (default `null`) |
 
 **Hub address prefixes (defaults):**
@@ -582,18 +583,17 @@ Each stack’s `azure_subscription_id` is the **subscription that owns that stac
 | Env | Hub01 | Hub02 | Hub03 |
 |---|---|---|---|
 | int | `10.170.245.0/24` | `10.170.246.0/24` | — (pending INT Azure 2.0 ranges) |
-| prd | `10.218.64.0/22` | `10.218.68.0/22` | `10.218.72.0/22` |
+| prd | `10.218.64.0/22` | `10.218.68.0/22` | `10.218.72.0/22` (**reserved — not deployed**) |
 
-prd hubs share parent **`10.218.64.0/20`** (three consecutive `/22` slices). See §1.9 and [`address-plan-hubs.md`](address-plan-hubs.md).
+prd parent **`10.218.64.0/20`** holds three `/22` slices; only Hub01/02 are applied. See §1.9 and [`address-plan-hubs.md`](address-plan-hubs.md).
 
-**Terraform wiring (prd):** `module.hub_secured` → Hub01, `module.hub_unsecured` → Hub02, `module.hub_spare` → Hub03. Only Hub01/02 IDs flow into `mgmt` and `labs` today.
-
-**int has no Hub03** — no `hub-spare` module call and no `hub03_address_prefix` variable. Hub03 lands only when INT Azure 2.0 hub ranges are agreed.
+**Terraform wiring:** `module.hub_secured` → Hub01, `module.hub_unsecured` → Hub02. `module.hub_spare` is commented — not in state. Only Hub01/02 IDs flow into `mgmt` and `labs`.
 
 Do **not** use `10.170.248.0/24` as a hub prefix (collides with PERS `01l` `10.170.248.0/21`).  
 prd hubs must stay distinct from int hubs on the shared `_global` vWAN.
 
-**Outputs → next:** `hub01_id`, `hub01_firewall_private_ip`, `hub02_id`, `hub03_id` (prd), `firewall_policy_id`.  
+**Outputs → next:** `hub01_id`, `hub01_firewall_private_ip`, `hub02_id`, `firewall_policy_id`.  
+`hub03_id` — N/A until `hub_spare` uncommented.  
 Firewall private IP under vWAN is **not** classic `.4` — always take the connectivity output.
 
 ### 7.3 `mgmt`
@@ -661,12 +661,12 @@ DNS on all lab VNets: `10.19.96.1`, `10.19.97.1`.
 
 | Env | Hub01 (secured) | Hub02 (unsecured) | Hub03 (spare) |
 |---|---|---|---|
-| **int** | `10.170.245.0/24` | `10.170.246.0/24` | not deployed |
-| **prd** | `10.218.64.0/22` | `10.218.68.0/22` | `10.218.72.0/22` |
+| **int** | `10.170.245.0/24` | `10.170.246.0/24` | not in env |
+| **prd** | `10.218.64.0/22` | `10.218.68.0/22` | `10.218.72.0/22` reserved — **not deployed** |
 
 Under Virtual WAN, each hub CIDR is the virtual hub `address_prefix` — not a classic VNet with `AzureFirewallSubnet` / `GatewaySubnet` children. Firewall and ER/VPN attach as **hub SKUs** on Hub01/Hub02 only.
 
-**Hub03 traffic:** none today. It participates in vWAN full mesh but has no spokes or gateways, so no UDR or Routing Intent applies to it.
+**Hub03 traffic:** none — no Azure resource until uncommented. When enabled later, mesh-only until spokes/gateways attach.
 
 ### 8.1 Corporate DNS (everywhere)
 
@@ -956,7 +956,7 @@ Stacks do **not** use remote-state data sources. Copy outputs into the next stac
 | `_global` | `vwan_id` | connectivity `virtual_wan_id` |
 | connectivity | `hub01_id`, `hub01_firewall_private_ip` | mgmt + labs |
 | connectivity | `hub02_id` | labs (MSH dual-hub) |
-| connectivity | `hub03_id` (prd only) | nothing yet — reserved for future hub connections |
+| connectivity | `hub03_id` | N/A until `hub_spare` uncommented — then future hub connections |
 | connectivity | `firewall_policy_id`, `resource_group_name` | ops / diagnostics reference |
 | mgmt | `law_id` | labs (file diags), avd (HP/SP diags + `dcr-msh`) |
 | mgmt | `agents_subnet_id` | labs storage/KV Deny ACL allow-list |
@@ -1006,7 +1006,7 @@ Hub / mgmt / lab subscription GUIDs: still `TODO(deploy)` in inventory — fill 
 
 | Optional for full platform | Stack |
 |---|---|
-| `hub03_address_prefix` | prd connectivity only (default `10.218.72.0/22`) |
+| `hub03_address_prefix` | prd connectivity — **reserved only** (default `10.218.72.0/22`; not applied until uncomment) |
 | `expressroute_circuit_peering_id` | connectivity |
 | Firewall Policy allow rules | connectivity / Policy |
 | Hub02 VPN site + connection | connectivity (not coded) |
@@ -1032,8 +1032,8 @@ Offline until creds: `terraform init -backend=false` + `terraform validate` only
 | avd providers | `azurerm` + `azapi` (personal SP schedules) + `time` (tokens) |
 | PERS/PRIV path | Spoke → Hub01 (internet security + default-to-firewall) → AZFW / Routing Intent / ER |
 | MSH path | Dual hub + UDR: internet→Hub02 VPN; RFC1918/AzureCloud→Hub01 FW |
-| prd Hub03 | `10.218.72.0/22` bare spare vhub — prd only; no spokes/gateways yet |
-| prd hub parent | `10.218.64.0/20` → Hub01 `64.0/22`, Hub02 `68.0/22`, Hub03 `72.0/22` |
+| prd Hub03 | config spare — CIDR `10.218.72.0/22` + module kept; **not deployed** until uncommented |
+| prd hub parent | `10.218.64.0/20` → Hub01/02 deployed; Hub03 `72.0/22` reserved in code only |
 | MSH pools | 30; token 175h; start_vm_on_connect **false**; Sat 01:00 agent updates; max 6-18; std + decom scaling plans |
 | PERS / PRIV | 10 + 1; token 240h; start_vm_on_connect **true**; Direct; max 9999; PRIV has **no stack outputs** yet |
 | FSLogix | 10 STAs; shares on `...pf{bu}`; Deny ACL + SE; CMK via Multi KV + per-STA UAMI |
@@ -1041,7 +1041,7 @@ Offline until creds: `terraform init -backend=false` + `terraform validate` only
 | Lab KVs | **15** (2+12+1) |
 | Alerts | Deploy both envs; **enabled only in prd** |
 | DNS | `10.19.96.1`, `10.19.97.1` |
-| Still open by design | Hub02 VPN peer; FWP allow rules; TDA naming board; deploy-time GUIDs; Hub03 consumers; PRIV avd outputs |
+| Still open by design | Hub02 VPN peer; FWP allow rules; TDA naming board; deploy-time GUIDs; Hub03 enable when needed; PRIV avd outputs |
 
 ---
 
@@ -1056,7 +1056,7 @@ Companion to §2 (what each module *is*). This table is what each module *return
 | `modules/platform/vwan` | `vwan_id`, `vwan_name` |
 | `modules/platform/hub-secured` | `hub_id`, `firewall_private_ip`, `firewall_id`, `express_route_gateway_id` |
 | `modules/platform/hub-unsecured` | `hub_id`, `hub_name`, `vpn_gateway_id` |
-| `modules/platform/hub-spare` | `hub_id`, `hub_name` (no spoke consumers yet) |
+| `modules/platform/hub-spare` | `hub_id`, `hub_name` — available when module uncommented (no consumers yet) |
 | `modules/platform/firewall-policy` | `policy_id`, `policy_name`, `ip_group_ids` |
 | `modules/platform/management` | `law_id`, `law_workspace_id`, `law_name`, `data_collection_endpoint_id`, `avd_insights_dcr_id`, `action_group_ids` |
 | `modules/platform/dcr-msh` | `dcr_ids` map; `dcr_main_id`, `dcr_insights_id`, `dcr_fsl_id`, `dcr_wss_id`; `data_collection_endpoint_id` |

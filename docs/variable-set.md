@@ -65,7 +65,7 @@ See `docs/address-plan-hubs.md`.
 | Env | Hub01 | Hub02 | Hub03 |
 |---|---|---|---|
 | int | `10.170.245.0/24` | `10.170.246.0/24` | — (pending INT Azure 2.0 ranges) |
-| prd | `10.218.64.0/22` | `10.218.68.0/22` | `10.218.72.0/22` (spare bare) |
+| prd | `10.218.64.0/22` | `10.218.68.0/22` | `10.218.72.0/22` (**spare in code — not deployed**) |
 
 ---
 

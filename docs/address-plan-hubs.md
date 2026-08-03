@@ -33,7 +33,7 @@ Microsoft: hub min `/24`, recommend `/23+`; **Azure Firewall in hub requires `/2
 |---|---|---|---|
 | Hub01 | Secured (AZFW + Routing Intent + ER) | `10.218.64.0/22` | Production hub 1 |
 | Hub02 | Unsecured (VPN GW shell / MSH path) | `10.218.68.0/22` | Production hub 2 |
-| Hub03 | Spare bare (vWAN mesh only) | `10.218.72.0/22` | No FW/VPN/ER/spokes yet — reservation + mesh; private traffic via Hub01 FW when later used. Doc typo `0.218.72.0/22` treated as `10.218.72.0/22`. |
+| Hub03 | Spare bare (reserved) | `10.218.72.0/22` | **Not deployed** — CIDR + `hub-spare` module kept in code; `module "hub_spare"` commented out in `prd/connectivity`. Uncomment when a region needs it (region-agnostic). Doc typo `0.218.72.0/22` treated as `10.218.72.0/22`. |
 
 ### Superseded Azure 1.0 / interim prd defaults
 

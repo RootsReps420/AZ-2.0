@@ -33,8 +33,10 @@ variable "mandatory_tags" {
 }
 
 # Azure 2.0 hub IP plan (Production): parent 10.218.64.0/20 as three /22 hubs.
-# Hub01 secured / Hub02 unsecured / Hub03 spare bare. Distinct from int hubs
-# (10.170.245/246) on the shared vWAN. Do NOT use 10.170.248.0/24 (PERS 01l /21).
+# Hub01 secured / Hub02 unsecured deploy today. Hub03 spare CIDR is reserved in
+# code only (module hub_spare commented out) until a region needs it.
+# Distinct from int hubs (10.170.245/246) on the shared vWAN.
+# Do NOT use 10.170.248.0/24 (PERS 01l /21).
 # Supersedes classic Azure 1.0 Hub01 10.170.247.0/24 and interim Hub02 10.170.244.0/24.
 variable "hub01_address_prefix" {
   description = "Hub01 (secured) virtual hub address prefix. Azure 2.0 Production hub 1."
@@ -49,7 +51,7 @@ variable "hub02_address_prefix" {
 }
 
 variable "hub03_address_prefix" {
-  description = "Hub03 (spare / bare) virtual hub address prefix. Azure 2.0 Production hub 3 — reservation + vWAN mesh only; no spokes yet."
+  description = "Hub03 (spare / bare) reserved virtual hub address prefix. SPARE — not deployed until module hub_spare is uncommented in main.tf. Region-agnostic when enabled."
   type        = string
   default     = "10.218.72.0/22"
 }

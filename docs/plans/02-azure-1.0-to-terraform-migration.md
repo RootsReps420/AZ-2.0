@@ -14,7 +14,7 @@
 - [x] Phase F (scaffold): gallery + `for_each` image definitions; Packer rename checklist (`docs/packer-tda-rename-checklist.md`)
 - [x] Phase G: variable-set doc; bank tags / DNS / GUIDs / KV unique_id / RBAC via tfvars only (`docs/variable-set.md`)
 - [x] Phase H: AzDo TF templates + release pipelines (`pipelines/`); keep ops PS/Packer; DEFER initiatives+GLB
-- [x] IP double-check: see `docs/address-plan-hubs.md` — int Hub01/02 = `10.170.245/246` `/24`; prd Azure 2.0 = Hub01 `10.218.64.0/22`, Hub02 `10.218.68.0/22`, Hub03 spare `10.218.72.0/22` (supersedes classic prd `247/244`)
+- [x] IP double-check: see `docs/address-plan-hubs.md` — int Hub01/02 = `10.170.245/246` `/24`; prd Azure 2.0 = Hub01 `10.218.64.0/22`, Hub02 `10.218.68.0/22`, Hub03 spare CIDR `10.218.72.0/22` reserved in code (**not deployed** until `hub_spare` uncommented; supersedes classic prd `247/244`)
 
 Ports the legacy estate in `legacy/` onto the new Terraform modules. Based on deep inventory across **seven** legacy checkouts: platform, scripts, images, mult (MSH), pers (lab spokes — verify in Phase 0), initiatives (Azure Policy — deferred), libraries (ops helpers — stays PS). Ignore `platformtest` / `scriptstest` mirrors.
 

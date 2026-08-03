@@ -6,7 +6,7 @@ Keep the same AzDo SPNs, service connections, and private agents. Do **not** rew
 ## Apply order
 
 1. `environments/_global` — shared Virtual WAN  
-2. `environments/<env>/connectivity` — Hub01 + Hub02 + baseline FWP (+ Hub03 spare on **prd**)  
+2. `environments/<env>/connectivity` — Hub01 + Hub02 + baseline FWP (Hub03 spare exists in code only — not deployed)  
 3. `environments/<env>/mgmt` — LAW + mgmt spoke + optional RBAC  
 4. `environments/<env>/labs` — PERS/MSH spokes + FSLogix storage  
 5. `environments/<env>/avd` — host pools, scaling, gallery  

@@ -1,0 +1,60 @@
+# IGMF sandbox release — one stack per run into ignitemyfire.co.uk.
+# Deploy order: _global → connectivity (mgmt/labs/avd stacks not wired yet).
+# Hardcoded IGMF AzDo identity — do NOT use bank SC / private agent pools.
+# Requires AzDo variable group: tf-backend-igmf
+#   (tf.backend.resourceGroup, tf.backend.storageAccount)
+
+trigger: none
+
+parameters:
+  - name: stackName
+    displayName: Stack
+    type: string
+    default: connectivity
+    values:
+      - _global
+      - connectivity
+  - name: action
+    displayName: Action
+    type: string
+    default: plan
+    values:
+      - plan
+      - apply
+      - destroy
+
+variables:
+  - group: tf-backend-igmf
+  - name: envName
+    value: igmf
+  - name: azureServiceConnection
+    value: SC-IGMF-VDI-TF-01
+  - name: agentPool
+    value: Azure Pipelines
+  - name: tfBackendResourceGroup
+    value: $(tf.backend.resourceGroup)
+  - name: tfBackendStorageAccount
+    value: $(tf.backend.storageAccount)
+  - name: tfBackendContainer
+    value: tfstate
+  - name: stackWorkingDirectory
+    ${{ if eq(parameters.stackName, '_global') }}:
+      value: environments/_global
+    ${{ else }}:
+      value: environments/igmf/${{ parameters.stackName }}
+
+stages:
+  - stage: terraform
+    displayName: Terraform ${{ parameters.action }} igmf/${{ parameters.stackName }}
+    jobs:
+      - template: templates/terraform-stack.yml
+        parameters:
+          envName: igmf
+          stackName: ${{ parameters.stackName }}
+          azureServiceConnection: $(azureServiceConnection)
+          agentPool: $(agentPool)
+          tfBackendResourceGroup: $(tfBackendResourceGroup)
+          tfBackendStorageAccount: $(tfBackendStorageAccount)
+          tfBackendContainer: $(tfBackendContainer)
+          action: ${{ parameters.action }}
+          workingDirectory: $(stackWorkingDirectory)

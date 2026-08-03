@@ -1,0 +1,51 @@
+# IGMF sandbox convenience pipeline: connectivity (Hub01 + Hub02 + baseline FWP).
+# Prefer tf-igmf-release.yml for _global and other stacks.
+# Requires AzDo variable group: tf-backend-igmf
+
+trigger: none
+
+variables:
+  - group: tf-backend-igmf
+  - name: azureServiceConnection
+    value: SC-IGMF-VDI-TF-01
+  - name: agentPool
+    value: Azure Pipelines
+  - name: tfBackendResourceGroup
+    value: $(tf.backend.resourceGroup)
+  - name: tfBackendStorageAccount
+    value: $(tf.backend.storageAccount)
+  - name: tfBackendContainer
+    value: tfstate
+
+stages:
+  - stage: plan
+    displayName: Plan igmf/connectivity
+    jobs:
+      - template: templates/terraform-stack.yml
+        parameters:
+          envName: igmf
+          stackName: connectivity
+          azureServiceConnection: $(azureServiceConnection)
+          agentPool: $(agentPool)
+          tfBackendResourceGroup: $(tfBackendResourceGroup)
+          tfBackendStorageAccount: $(tfBackendStorageAccount)
+          tfBackendContainer: $(tfBackendContainer)
+          action: plan
+          workingDirectory: environments/igmf/connectivity
+
+  - stage: apply
+    displayName: Apply igmf/connectivity
+    dependsOn: plan
+    condition: succeeded()
+    jobs:
+      - template: templates/terraform-stack.yml
+        parameters:
+          envName: igmf
+          stackName: connectivity
+          azureServiceConnection: $(azureServiceConnection)
+          agentPool: $(agentPool)
+          tfBackendResourceGroup: $(tfBackendResourceGroup)
+          tfBackendStorageAccount: $(tfBackendStorageAccount)
+          tfBackendContainer: $(tfBackendContainer)
+          action: apply
+          workingDirectory: environments/igmf/connectivity

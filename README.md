@@ -44,9 +44,10 @@ environments/_global
 |---|---|
 | [`modules/`](modules/) | Reusable bricks (naming, tags, platform, core, avd, gallery) |
 | [`environments/_global`](environments/_global/) | Shared Virtual WAN |
-| [`environments/int/*`](environments/int/) | First live target (DT) |
+| [`environments/int/*`](environments/int/) | First live bank target (DT) |
 | [`environments/prd/*`](environments/prd/) | Production mirrors |
-| [`pipelines/`](pipelines/) | AzDo Terraform init / plan / apply |
+| [`environments/igmf/*`](environments/igmf/) | Disconnected IGMF sandbox (not bank cutover) |
+| [`pipelines/`](pipelines/) | AzDo Terraform init / plan / apply (bank + IGMF) |
 | [`docs/dummies-guide.md`](docs/dummies-guide.md) | **Start here** — as-built LLD (diagrams, modules, DevOps vs legacy scripts, CIDRs, AVD, wiring) |
 
 ## Who does what

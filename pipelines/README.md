@@ -11,26 +11,29 @@ Keep the same AzDo SPNs, service connections, and private agents. Do **not** rew
 4. `environments/<env>/labs` — PERS/MSH spokes + FSLogix storage  
 5. `environments/<env>/avd` — host pools, scaling, gallery  
 
-First live target: **`int`**.
+First live bank target: **`int`**. Disconnected sandbox: **`igmf`** (ignitemyfire.co.uk).
 
 ## Pipelines in this folder
 
 | File | Role |
 |---|---|
 | [`templates/terraform-stack.yml`](templates/terraform-stack.yml) | Reusable init / plan / apply (or destroy) job |
-| [`tf-release.yml`](tf-release.yml) | Parameterised release — pick `envName` + `stackName` |
-| [`tf-int-connectivity.yml`](tf-int-connectivity.yml) | Convenience wrapper for first cutover stack |
+| [`tf-release.yml`](tf-release.yml) | Bank release — pick `envName` (`int`/`prd`) + `stackName` |
+| [`tf-int-connectivity.yml`](tf-int-connectivity.yml) | Bank convenience wrapper for first cutover stack |
+| [`tf-igmf-release.yml`](tf-igmf-release.yml) | **IGMF sandbox** — hardcoded `SC-IGMF-VDI-TF-01` + hosted pool; stacks `_global` \| `connectivity` |
+| [`tf-igmf-connectivity.yml`](tf-igmf-connectivity.yml) | IGMF convenience plan→apply for `environments/igmf/connectivity` |
 
 ## Service connections / agents
 
-From `docs/subscription-inventory.md`:
+From `docs/subscription-inventory.md` (bank) and IGMF sandbox plan:
 
-| Env | Deploy SPN | Agent pool (example) |
-|---|---|---|
-| int | `SC-R-VDI-INT-C-01` | `uks-int-vdi-mgmt-vss-01` |
-| prd | `SC-P-VDI-PRD-C-01` | `uks-prd-vdi-mgmt-vss-01` |
+| Env | Deploy SC | Agent pool | Variable group |
+|---|---|---|---|
+| int | `SC-R-VDI-INT-C-01` | `uks-int-vdi-mgmt-vss-01` | `tf-backend-*` (bank) |
+| prd | `SC-P-VDI-PRD-C-01` | `uks-prd-vdi-mgmt-vss-01` | `tf-backend-*` (bank) |
+| igmf | `SC-IGMF-VDI-TF-01` | `Azure Pipelines` (hosted) | `tf-backend-igmf` |
 
-Wire real pool names / backend config in AzDo variable groups (`tf-backend-*`).
+IGMF state keys: `igmf/_global.tfstate`, `igmf/connectivity.tfstate`. See [`environments/igmf/README.md`](../environments/igmf/README.md).
 
 ## Out of scope (unchanged)
 

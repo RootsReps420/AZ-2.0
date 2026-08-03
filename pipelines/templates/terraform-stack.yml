@@ -3,8 +3,8 @@
 #   tfBackendResourceGroup, tfBackendStorageAccount, tfBackendContainer,
 #   terraformVersion (optional)
 #
-# Auth: AzureCLI@2 logs in as the service connection SP. azurerm does NOT accept
-# Azure CLI auth for service principals — export ARM_* from addSpnToEnvironment.
+# Auth: AzureCLI@2 logs in as the service connection SP. azurerm refuses CLI auth
+# for service principals — export ARM_* and disable CLI auth (ARM_USE_CLI=false).
 
 parameters:
   - name: envName
@@ -48,89 +48,106 @@ jobs:
         inputs:
           terraformVersion: ${{ parameters.terraformVersion }}
 
+      # Capture SP creds once, then clear az CLI so terraform never uses CLI auth.
       - task: AzureCLI@2
-        displayName: Terraform init
+        name: armcreds
+        displayName: Export ARM credentials for Terraform
         inputs:
           azureSubscription: ${{ parameters.azureServiceConnection }}
           addSpnToEnvironment: true
           scriptType: bash
           scriptLocation: inlineScript
-          workingDirectory: $(Build.SourcesDirectory)/$(stackDir)
           inlineScript: |
             set -euo pipefail
-            export ARM_CLIENT_ID="$servicePrincipalId"
-            export ARM_CLIENT_SECRET="$servicePrincipalKey"
-            export ARM_TENANT_ID="$tenantId"
-            export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
+            if [ -z "${servicePrincipalId:-}" ] || [ -z "${servicePrincipalKey:-}" ] || [ -z "${tenantId:-}" ]; then
+              echo "##vso[task.logissue type=error]addSpnToEnvironment did not populate SPN vars. Service connection must be 'Service principal (manual)' with a client secret (not WIF-only)."
+              exit 1
+            fi
+            SUB_ID="$(az account show --query id -o tsv)"
+            echo "##vso[task.setvariable variable=ARM_CLIENT_ID;isOutput=true;issecret=true]${servicePrincipalId}"
+            echo "##vso[task.setvariable variable=ARM_CLIENT_SECRET;isOutput=true;issecret=true]${servicePrincipalKey}"
+            echo "##vso[task.setvariable variable=ARM_TENANT_ID;isOutput=true;issecret=true]${tenantId}"
+            echo "##vso[task.setvariable variable=ARM_SUBSCRIPTION_ID;isOutput=true]${SUB_ID}"
+            echo "ARM credentials captured for subscription ${SUB_ID}"
+
+      - task: Bash@3
+        displayName: Terraform init
+        env:
+          ARM_CLIENT_ID: $(armcreds.ARM_CLIENT_ID)
+          ARM_CLIENT_SECRET: $(armcreds.ARM_CLIENT_SECRET)
+          ARM_TENANT_ID: $(armcreds.ARM_TENANT_ID)
+          ARM_SUBSCRIPTION_ID: $(armcreds.ARM_SUBSCRIPTION_ID)
+          ARM_USE_CLI: "false"
+        inputs:
+          targetType: inline
+          workingDirectory: $(Build.SourcesDirectory)/$(stackDir)
+          script: |
+            set -euo pipefail
             terraform init -input=false \
               -backend-config="resource_group_name=${{ parameters.tfBackendResourceGroup }}" \
               -backend-config="storage_account_name=${{ parameters.tfBackendStorageAccount }}" \
               -backend-config="container_name=${{ parameters.tfBackendContainer }}" \
               -backend-config="key=$(stateKey)"
 
-      - task: AzureCLI@2
+      - task: Bash@3
         displayName: Terraform validate
+        env:
+          ARM_CLIENT_ID: $(armcreds.ARM_CLIENT_ID)
+          ARM_CLIENT_SECRET: $(armcreds.ARM_CLIENT_SECRET)
+          ARM_TENANT_ID: $(armcreds.ARM_TENANT_ID)
+          ARM_SUBSCRIPTION_ID: $(armcreds.ARM_SUBSCRIPTION_ID)
+          ARM_USE_CLI: "false"
         inputs:
-          azureSubscription: ${{ parameters.azureServiceConnection }}
-          addSpnToEnvironment: true
-          scriptType: bash
-          scriptLocation: inlineScript
+          targetType: inline
           workingDirectory: $(Build.SourcesDirectory)/$(stackDir)
-          inlineScript: |
+          script: |
             set -euo pipefail
-            export ARM_CLIENT_ID="$servicePrincipalId"
-            export ARM_CLIENT_SECRET="$servicePrincipalKey"
-            export ARM_TENANT_ID="$tenantId"
-            export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
             terraform validate
 
-      - task: AzureCLI@2
+      - task: Bash@3
         displayName: Terraform plan
         condition: and(succeeded(), ne('${{ parameters.action }}', 'destroy'))
+        env:
+          ARM_CLIENT_ID: $(armcreds.ARM_CLIENT_ID)
+          ARM_CLIENT_SECRET: $(armcreds.ARM_CLIENT_SECRET)
+          ARM_TENANT_ID: $(armcreds.ARM_TENANT_ID)
+          ARM_SUBSCRIPTION_ID: $(armcreds.ARM_SUBSCRIPTION_ID)
+          ARM_USE_CLI: "false"
         inputs:
-          azureSubscription: ${{ parameters.azureServiceConnection }}
-          addSpnToEnvironment: true
-          scriptType: bash
-          scriptLocation: inlineScript
+          targetType: inline
           workingDirectory: $(Build.SourcesDirectory)/$(stackDir)
-          inlineScript: |
+          script: |
             set -euo pipefail
-            export ARM_CLIENT_ID="$servicePrincipalId"
-            export ARM_CLIENT_SECRET="$servicePrincipalKey"
-            export ARM_TENANT_ID="$tenantId"
-            export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
             terraform plan -input=false -out=tfplan
 
-      - task: AzureCLI@2
+      - task: Bash@3
         displayName: Terraform apply
         condition: and(succeeded(), eq('${{ parameters.action }}', 'apply'))
+        env:
+          ARM_CLIENT_ID: $(armcreds.ARM_CLIENT_ID)
+          ARM_CLIENT_SECRET: $(armcreds.ARM_CLIENT_SECRET)
+          ARM_TENANT_ID: $(armcreds.ARM_TENANT_ID)
+          ARM_SUBSCRIPTION_ID: $(armcreds.ARM_SUBSCRIPTION_ID)
+          ARM_USE_CLI: "false"
         inputs:
-          azureSubscription: ${{ parameters.azureServiceConnection }}
-          addSpnToEnvironment: true
-          scriptType: bash
-          scriptLocation: inlineScript
+          targetType: inline
           workingDirectory: $(Build.SourcesDirectory)/$(stackDir)
-          inlineScript: |
+          script: |
             set -euo pipefail
-            export ARM_CLIENT_ID="$servicePrincipalId"
-            export ARM_CLIENT_SECRET="$servicePrincipalKey"
-            export ARM_TENANT_ID="$tenantId"
-            export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
             terraform apply -input=false -auto-approve tfplan
 
-      - task: AzureCLI@2
+      - task: Bash@3
         displayName: Terraform destroy
         condition: and(succeeded(), eq('${{ parameters.action }}', 'destroy'))
+        env:
+          ARM_CLIENT_ID: $(armcreds.ARM_CLIENT_ID)
+          ARM_CLIENT_SECRET: $(armcreds.ARM_CLIENT_SECRET)
+          ARM_TENANT_ID: $(armcreds.ARM_TENANT_ID)
+          ARM_SUBSCRIPTION_ID: $(armcreds.ARM_SUBSCRIPTION_ID)
+          ARM_USE_CLI: "false"
         inputs:
-          azureSubscription: ${{ parameters.azureServiceConnection }}
-          addSpnToEnvironment: true
-          scriptType: bash
-          scriptLocation: inlineScript
+          targetType: inline
           workingDirectory: $(Build.SourcesDirectory)/$(stackDir)
-          inlineScript: |
+          script: |
             set -euo pipefail
-            export ARM_CLIENT_ID="$servicePrincipalId"
-            export ARM_CLIENT_SECRET="$servicePrincipalKey"
-            export ARM_TENANT_ID="$tenantId"
-            export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
             terraform destroy -input=false -auto-approve

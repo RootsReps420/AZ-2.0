@@ -1,0 +1,32 @@
+azure_subscription_id = "cc1ccb8d-18a1-4dca-aa5a-54607876c990" # IGMF sandbox subscription
+location              = "uksouth"
+environment           = "igmf"
+subscription_code     = "vdi"
+
+# From igmf/mgmt output law_id (optional)
+# law_id = "/subscriptions/.../workspaces/..."
+
+default_max_session_limit = 16
+keyvault_unique_id        = "avdigmf1" # globally unique — change if collision
+
+# First smoke can disable PERS/PRIV to cut cost:
+# enable_pers_host_pools = false
+# enable_priv_host_pools = false
+
+mandatory_tags = {
+  costCentre             = "IGMF-SANDBOX"
+  securityClassification = "Limited"
+  resourceOwner          = "dan.bowen@ignitemyfire.co.uk"
+  CMDB_AppID             = "IGMF001"
+}
+
+# Gallery Packer MSI — leave unset until you have an IGMF Packer identity
+# gallery_role_assignments = {
+#   packer = {
+#     principal_id       = "REPLACE-OBJECT-ID"
+#     role_definition_id = "REPLACE-CUSTOM-ROLE-GUID"
+#   }
+# }
+
+# WVD Power On Off — leave unset for sandbox
+# wvd_power_on_off_principal_id = "REPLACE-WVD-SP-OBJECT-ID"

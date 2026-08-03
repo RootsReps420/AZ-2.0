@@ -20,7 +20,7 @@ First live bank target: **`int`**. Disconnected sandbox: **`igmf`** (ignitemyfir
 | [`templates/terraform-stack.yml`](templates/terraform-stack.yml) | Reusable init / plan / apply (or destroy) job |
 | [`tf-release.yml`](tf-release.yml) | Bank release — pick `envName` (`int`/`prd`) + `stackName` |
 | [`tf-int-connectivity.yml`](tf-int-connectivity.yml) | Bank convenience wrapper for first cutover stack |
-| [`tf-igmf-release.yml`](tf-igmf-release.yml) | **IGMF sandbox** — hardcoded `SC-IGMF-VDI-TF-01` + hosted pool; stacks `_global` \| `connectivity` |
+| [`tf-igmf-release.yml`](tf-igmf-release.yml) | **IGMF sandbox** — hardcoded `SC-IGMF-VDI-TF-01` + hosted pool; stacks `_global` \| `connectivity` \| `mgmt` \| `labs` \| `avd` |
 | [`tf-igmf-connectivity.yml`](tf-igmf-connectivity.yml) | IGMF convenience plan→apply for `environments/igmf/connectivity` |
 
 ## Service connections / agents
@@ -33,7 +33,7 @@ From `docs/subscription-inventory.md` (bank) and IGMF sandbox plan:
 | prd | `SC-P-VDI-PRD-C-01` | `uks-prd-vdi-mgmt-vss-01` | `tf-backend-*` (bank) |
 | igmf | `SC-IGMF-VDI-TF-01` | `Azure Pipelines` (hosted) | `tf-backend-igmf` |
 
-IGMF state keys: `igmf/_global.tfstate`, `igmf/connectivity.tfstate`. See [`environments/igmf/README.md`](../environments/igmf/README.md).
+IGMF state keys: `igmf/<stack>.tfstate` (`_global`, `connectivity`, `mgmt`, `labs`, `avd`). See [`environments/igmf/README.md`](../environments/igmf/README.md).
 
 ## Out of scope (unchanged)
 

@@ -20,7 +20,7 @@ This is the practical LLD for **what Terraform actually deploys today**. Compani
 
 Local-only (gitignored — stay on disk, not pushed): `docs/plans/03-cursor-handoff.md`, `docs/plans/05-sandbox-deploy-runthrough.md`.
 
-**IGMF sandbox** (`environments/igmf` + `pipelines/tf-igmf-*.yml`): disconnected ignitemyfire.co.uk smoke test — **not** bank cutover. Bank live targets remain `int` / `prd`.
+**IGMF sandbox** (`environments/igmf/{connectivity,mgmt,labs,avd}` + `pipelines/tf-igmf-*.yml`): full env peer of int/prd for disconnected ignitemyfire.co.uk smoke tests — **not** bank cutover. Bank live targets remain `int` / `prd`.
 
 **Hard rule:** session-host VMs are **not** Terraform. Terraform builds network, platform services, storage, and AVD *objects*. PowerShell / AzDo places VMs and users.
 

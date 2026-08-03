@@ -24,7 +24,7 @@ Virtual WAN (_global)
    └─ Hub03 spare     → config only (commented); CIDR 10.218.72.0/22 reserved — not deployed
 ```
 
-Environments in scope: **`int`** (DT) and **`prd`**. Region today: **uksouth**.
+Environments in scope: **`int`** (DT), **`prd`**, and sandbox **`igmf`**. Region today: **uksouth**.
 
 ## Apply order
 
@@ -46,7 +46,7 @@ environments/_global
 | [`environments/_global`](environments/_global/) | Shared Virtual WAN |
 | [`environments/int/*`](environments/int/) | First live bank target (DT) |
 | [`environments/prd/*`](environments/prd/) | Production mirrors |
-| [`environments/igmf/*`](environments/igmf/) | Disconnected IGMF sandbox (not bank cutover) |
+| [`environments/igmf/*`](environments/igmf/) | Full IGMF sandbox peer (connectivity/mgmt/labs/avd — not bank cutover) |
 | [`pipelines/`](pipelines/) | AzDo Terraform init / plan / apply (bank + IGMF) |
 | [`docs/dummies-guide.md`](docs/dummies-guide.md) | **Start here** — as-built LLD (diagrams, modules, DevOps vs legacy scripts, CIDRs, AVD, wiring) |
 

@@ -1,5 +1,5 @@
 # IGMF sandbox release — one stack per run into ignitemyfire.co.uk.
-# Deploy order: _global → connectivity (mgmt/labs/avd stacks not wired yet).
+# Deploy order: _global → connectivity → mgmt → labs → avd.
 # Hardcoded IGMF AzDo identity — do NOT use bank SC / private agent pools.
 # Requires AzDo variable group: tf-backend-igmf
 #   (tf.backend.resourceGroup, tf.backend.storageAccount)
@@ -14,6 +14,9 @@ parameters:
     values:
       - _global
       - connectivity
+      - mgmt
+      - labs
+      - avd
   - name: action
     displayName: Action
     type: string

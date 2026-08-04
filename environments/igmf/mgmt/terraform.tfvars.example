@@ -3,9 +3,9 @@ location              = "uksouth"
 environment           = "igmf"
 subscription_code     = "mgmt"
 
-# Paste from igmf/connectivity outputs after apply
-hub01_id                  = "/subscriptions/REPLACE/resourceGroups/REPLACE/providers/Microsoft.Network/virtualHubs/REPLACE"
-hub01_firewall_private_ip = "10.0.0.0" # TODO(deploy): connectivity output hub01_firewall_private_ip
+# Paste from igmf/connectivity outputs after apply (HARD CODED)
+hub01_id                  = "/subscriptions/cc1ccb8d-18a1-4dca-aa5a-54607876c990/resourceGroups/uks-conn-rsg-connectivity/providers/Microsoft.Network/virtualHubs/uks-conn-vhb-hub01"
+hub01_firewall_private_ip = "10.170.245.132" # TODO(deploy): connectivity output hub01_firewall_private_ip
 
 mandatory_tags = {
   costCentre             = "IGMF-SANDBOX"

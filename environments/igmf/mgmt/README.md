@@ -15,6 +15,7 @@ devops SP, sandbox tags).
 - Log Analytics workspace (retention 30; resource-only permissions true)
 - DCE + thin Insights DCR (full MSH set lives in `avd`)
 - Action group + alert UAMI shells (alerts **enabled** only when `environment == "prd"` — disabled under `igmf`)
+- Scheduled query (AVD log) alert **resources are skipped** under IGMF — Azure rejects create on a LAW with no WVD* tables yet. Restore via `scheduled_query_alerts = local.scheduled_query_alerts` in `main.tf` after AVD/tables exist.
 
 ## Inputs to wire at deploy
 

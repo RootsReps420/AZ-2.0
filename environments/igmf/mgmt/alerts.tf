@@ -1,8 +1,10 @@
 # Active platform alerts — legacy platform/bicep/alerts (15 template types).
-# Rules are deployed for int+prd; enabled only when environment contains "prd".
+# Rules are defined for int+prd+igmf; enabled only when environment == "prd".
+# IGMF: scheduled_query_alerts are NOT passed into module.management (see main.tf) —
+# fresh LAW has no WVD* tables, so create fails with 400 even when disabled.
 # Filshare metric alerts need storage file-service scopes from labs (optional map).
 # Activity log alerts (resource/service health) live here (complex criteria).
-# Scheduled query + metric alerts are passed into module.management.
+# Metric alerts + (when restored) scheduled query alerts go into module.management.
 
 locals {
   alerts_enabled = local.env == "prd"

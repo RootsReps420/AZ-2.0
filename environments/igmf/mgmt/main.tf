@@ -60,7 +60,15 @@ module "management" {
     }
   }
 
-  scheduled_query_alerts = local.scheduled_query_alerts
+  # Skip scheduled-query alert *creation* in IGMF. Azure validates KQL against the
+  # LAW schema at create time even when enabled=false; a fresh workspace has no
+  # WVD* tables (WVDConnections, WVDAutoscaleEvaluationPooled, WVDAgentHealthStatus)
+  # until AVD diagnostics ingest — create then 400s. Metric alerts are fine.
+  #
+  # To restore after AVD/tables exist: set
+  #   scheduled_query_alerts = local.scheduled_query_alerts
+  # Definitions stay in alerts.tf (local.scheduled_query_alerts).
+  scheduled_query_alerts = {}
   metric_alerts          = local.metric_alerts
 
   tags = module.tags.tags

@@ -29,6 +29,6 @@ output "hub01_connection_id" {
 }
 
 output "hub02_connection_id" {
-  description = "Resource ID of the Hub02 virtual hub connection."
-  value       = azurerm_virtual_hub_connection.hub02.id
+  description = "Always null — Azure allows one hub connection per VNet; Hub02 VPN must use hub-to-hub via Hub01."
+  value       = null
 }

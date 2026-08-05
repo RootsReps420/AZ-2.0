@@ -59,9 +59,15 @@ variable "public_network_access_enabled" {
 }
 
 variable "shared_access_key_enabled" {
-  description = "Legacy allowSharedKeyAccess false."
+  description = "Legacy allowSharedKeyAccess false — keys disabled; use Azure AD."
   type        = bool
   default     = false
+}
+
+variable "default_to_oauth_authentication" {
+  description = "Prefer Azure AD for data-plane auth (pairs with shared_access_key_enabled=false)."
+  type        = bool
+  default     = true
 }
 
 variable "network_rules" {

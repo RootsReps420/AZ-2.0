@@ -184,25 +184,26 @@ resource "azurerm_network_watcher" "this" {
 }
 
 # ---------------------------------------------------------------------------
-# Dual-hub connections.
+# Hub connection (Hub01 only).
 # ---------------------------------------------------------------------------
+#
+# Azure Virtual WAN hard limit: a VNet can connect to only ONE virtual hub
+# (error VirtualNetworkIsAlreadyConnectedToAnotherHub). Dual Hub01+Hub02
+# connections on the same MSH VNet are invalid — confirmed in IGMF apply.
+# https://learn.microsoft.com/azure/virtual-wan/howto-connect-vnet-hub
+#
+# MSH still uses the three-rule UDR (internet → Hub02 VPN next-hop type;
+# RFC1918/AzureCloud → Hub01 AZFW). Reaching Hub02 VPN once the peer exists
+# must be via Hub01 connection + vWAN hub-to-hub routing — not a second
+# hubVirtualNetworkConnection. var.hub02_id retained for callers / future wiring.
 
-# Hub01 — IP reachability. Internet security disabled: the UDR governs egress,
-# not Hub01 Routing Intent.
+# Hub01 — spoke attachment. internet_security_enabled=false so the UDR (not
+# Hub01 Routing Intent) governs egress.
 resource "azurerm_virtual_hub_connection" "hub01" {
   # Intentional literal name (not via modules/naming): embeds spoke + target hub.
   # "vhc" matches the TDA abbreviation.
   name                      = "vhc-${var.name}-hub01"
   virtual_hub_id            = var.hub01_id
-  remote_virtual_network_id = azurerm_virtual_network.this.id
-  internet_security_enabled = false
-}
-
-# Hub02 — remote gateway transit for VPN egress.
-resource "azurerm_virtual_hub_connection" "hub02" {
-  # Intentional literal name (not via modules/naming): embeds spoke + target hub.
-  name                      = "vhc-${var.name}-hub02"
-  virtual_hub_id            = var.hub02_id
   remote_virtual_network_id = azurerm_virtual_network.this.id
   internet_security_enabled = false
 }

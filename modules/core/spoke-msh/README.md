@@ -1,11 +1,15 @@
 # modules/core/spoke-msh
 
-Deploys an **MSH (multi-session host) workload spoke**. Connects to **both hubs**
-and overrides Hub01 Routing Intent with an explicit route table.
+Deploys an **MSH (multi-session host) workload spoke**. Connects to **Hub01**
+and overrides Hub01 Routing Intent with an explicit three-rule UDR (internet
+next-hop aimed at Hub02 VPN once that peer exists).
 
-> Complexity note (LLD §4.3): this module is more involved than `spoke-pers` due
-> to the dual-hub connections and the three-rule UDR. Build/change under
-> **senior-engineer review**.
+> Azure limit: one VNet → one virtual hub. A second connection to Hub02 returns
+> `VirtualNetworkIsAlreadyConnectedToAnotherHub`. Hub02 VPN reachability is
+> hub-to-hub via the Hub01 connection, not a dual `hubVirtualNetworkConnection`.
+
+> Complexity note (LLD §4.3): three-rule UDR + Hub02 VPN next-hop still under
+> **senior-engineer review** (Open Item 5).
 
 ## The three-rule UDR
 
@@ -21,7 +25,7 @@ and overrides Hub01 Routing Intent with an explicit route table.
 - `azurerm_network_security_group` + association (per subnet; optional `security_rules` — labs pass legacy VNet-scoped Multi rules)
 - `azurerm_route_table` (three-rule UDR) + subnet associations
 - `azurerm_network_watcher` (when `create_network_watcher`)
-- `azurerm_virtual_hub_connection` x2 (Hub01 + Hub02)
+- `azurerm_virtual_hub_connection` ×1 (Hub01 only)
 
 ## Depends on
 

@@ -94,7 +94,11 @@ variable "hub01_id" {
 }
 
 variable "hub02_id" {
-  description = "Resource ID of Hub02 (unsecured hub) for VPN gateway transit. Output hub_id from modules/platform/hub-unsecured."
+  description = <<-EOT
+    Resource ID of Hub02 (unsecured hub). Kept for API compatibility and future
+    hub-to-hub / UDR wiring. Not used for a second virtual_hub_connection —
+    Azure allows only one hub per VNet (see main.tf).
+  EOT
   type        = string
 }
 

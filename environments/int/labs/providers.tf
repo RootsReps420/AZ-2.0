@@ -10,6 +10,8 @@ terraform {
 }
 
 provider "azurerm" {
+  # Required when labs storage uses shared_access_key_enabled=false (legacy).
+  storage_use_azuread = true
   features {}
-  subscription_id = var.azure_subscription_id
+  subscription_id     = var.azure_subscription_id
 }

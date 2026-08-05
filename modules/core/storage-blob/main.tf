@@ -25,11 +25,15 @@ resource "azurerm_storage_account" "this" {
   account_kind             = var.account_kind
   account_replication_type = var.account_replication_type
 
-  https_traffic_only_enabled    = true
-  min_tls_version               = var.min_tls_version
-  public_network_access_enabled = var.public_network_access_enabled
-  shared_access_key_enabled     = var.shared_access_key_enabled
-  allow_nested_items_to_be_public = false
+  https_traffic_only_enabled        = true
+  min_tls_version                   = var.min_tls_version
+  public_network_access_enabled     = var.public_network_access_enabled
+  # Legacy allowSharedKeyAccess=false — AAD-only data plane (mirror bank).
+  # Provider must use storage_use_azuread=true or create waits 403
+  # KeyBasedAuthenticationNotPermitted while polling blob service.
+  shared_access_key_enabled         = var.shared_access_key_enabled
+  default_to_oauth_authentication   = var.default_to_oauth_authentication
+  allow_nested_items_to_be_public   = false
 
   dynamic "network_rules" {
     for_each = var.network_rules == null ? [] : [var.network_rules]

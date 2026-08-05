@@ -7,7 +7,7 @@ subscription_code     = "vdi"
 # law_id = "/subscriptions/cc1ccb8d-18a1-4dca-aa5a-54607876c990/resourcegroups/uks-mgmt-rsg-mgmt/providers/microsoft.operationalinsights/workspaces/uks-mgmt-law-vdi-01"
 
 default_max_session_limit = 16
-keyvault_unique_id        = "avdigmf1" # globally unique — change if collision
+keyvault_unique_id        = "avdigm1" # 3–7 chars (TDA/KV name cap); globally unique — change if collision
 
 # First smoke can disable PERS/PRIV to cut cost:
 # enable_pers_host_pools = false

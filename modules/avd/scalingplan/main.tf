@@ -29,6 +29,34 @@ module "scaling_plan_name" {
 locals {
   exclusion_tag              = var.exclusion_tag
   log_analytics_workspace_id = var.log_analytics_workspace_id
+
+  # azurerm_virtual_desktop_scaling_plan requires ≥1 `schedule` block even when
+  # real schedules are personal (azapi). PERS/PRIV pass only personal_schedules —
+  # without a placeholder, plan fails: "Insufficient schedule blocks".
+  # Real personal behaviour comes from azapi_resource.personal_schedule below.
+  pooled_schedules_effective = length(var.pooled_schedules) > 0 ? var.pooled_schedules : (
+    length(var.personal_schedules) > 0 ? {
+      "_tf_placeholder" = {
+        days_of_week                         = ["Monday"]
+        ramp_up_start_time                   = "00:00"
+        ramp_up_load_balancing_algorithm     = "BreadthFirst"
+        ramp_up_minimum_hosts_percent        = 0
+        ramp_up_capacity_threshold_percent   = 100
+        peak_start_time                      = "00:01"
+        peak_load_balancing_algorithm        = "BreadthFirst"
+        ramp_down_start_time                 = "23:58"
+        ramp_down_load_balancing_algorithm   = "DepthFirst"
+        ramp_down_minimum_hosts_percent      = 0
+        ramp_down_capacity_threshold_percent = 100
+        ramp_down_force_logoff_users         = false
+        ramp_down_wait_time_minutes          = 30
+        ramp_down_notification_message       = "placeholder"
+        ramp_down_stop_hosts_when            = "ZeroSessions"
+        off_peak_start_time                  = "23:59"
+        off_peak_load_balancing_algorithm    = "DepthFirst"
+      }
+    } : {}
+  )
 }
 
 resource "azurerm_virtual_desktop_scaling_plan" "this" {
@@ -51,7 +79,7 @@ resource "azurerm_virtual_desktop_scaling_plan" "this" {
 
   # Pooled schedules (native azurerm).
   dynamic "schedule" {
-    for_each = var.pooled_schedules
+    for_each = local.pooled_schedules_effective
     content {
       name         = schedule.key
       days_of_week = schedule.value.days_of_week

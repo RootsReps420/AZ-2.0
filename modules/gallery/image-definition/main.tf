@@ -33,9 +33,11 @@ resource "azurerm_shared_image" "this" {
   specialized        = var.specialized
 
   # Security type -> provider flags. TrustedLaunch requires generation V2.
-  trusted_launch_enabled    = var.security_type == "TrustedLaunch"
-  confidential_vm_enabled   = var.security_type == "ConfidentialVM"
-  confidential_vm_supported = var.security_type == "ConfidentialVMSupported"
+  # Only ONE of these may be set (even `false` counts as set and conflicts).
+  # Use null to omit — see azurerm_shared_image docs.
+  trusted_launch_enabled    = var.security_type == "TrustedLaunch" ? true : null
+  confidential_vm_enabled   = var.security_type == "ConfidentialVM" ? true : null
+  confidential_vm_supported = var.security_type == "ConfidentialVMSupported" ? true : null
 
   accelerated_network_support_enabled = var.accelerated_network_support_enabled
 

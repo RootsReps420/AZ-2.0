@@ -4,9 +4,9 @@ environment           = "igmf"
 subscription_code     = "vdi"
 
 # Paste from igmf/connectivity outputs after apply
-hub01_id                  = "/subscriptions/REPLACE/.../virtualHubs/REPLACE-hub01"
-hub02_id                  = "/subscriptions/REPLACE/.../virtualHubs/REPLACE-hub02"
-hub01_firewall_private_ip = "10.0.0.0" # TODO(deploy): connectivity output hub01_firewall_private_ip
+hub01_id                  = "/subscriptions/cc1ccb8d-18a1-4dca-aa5a-54607876c990/resourceGroups/uks-conn-rsg-connectivity/providers/Microsoft.Network/virtualHubs/uks-conn-vhb-hub01"
+hub02_id                  = "/subscriptions/cc1ccb8d-18a1-4dca-aa5a-54607876c990/resourceGroups/uks-conn-rsg-connectivity/providers/Microsoft.Network/virtualHubs/uks-conn-vhb-hub02"
+hub01_firewall_private_ip = "10.170.245.132" # TODO(deploy): connectivity output hub01_firewall_private_ip
 
 mandatory_tags = {
   costCentre             = "IGMF-SANDBOX"
@@ -23,5 +23,5 @@ enable_pers_blob   = true
 # enable_lab_keyvaults = true  # default; set false to skip Premium KVs
 
 # From igmf/mgmt after apply (needed for storage/KV Deny ACLs when those are on)
-# agents_subnet_id = "/subscriptions/.../subnets/AgentsSubnet"
-# law_id           = "/subscriptions/.../workspaces/..."
+# agents_subnet_id = "/subscriptions/cc1ccb8d-18a1-4dca-aa5a-54607876c990/resourceGroups/uks-mgmt-rsg-mgmt/providers/Microsoft.Network/virtualNetworks/uks-mgmt-net-mgmt-01/subnets/AgentsSubnet"
+# law_id           = "/subscriptions/cc1ccb8d-18a1-4dca-aa5a-54607876c990/resourcegroups/uks-mgmt-rsg-mgmt/providers/microsoft.operationalinsights/workspaces/uks-mgmt-law-vdi-01"

@@ -129,6 +129,8 @@ module "scaling_plan" {
 
   log_analytics_workspace_id = var.law_id
   tags                       = module.tags.tags
+
+  depends_on = [time_sleep.wvd_power_on_off]
 }
 
 # Decom sibling plans — catalog from scalingPlanSchedulesDecom.json
@@ -156,6 +158,8 @@ module "scaling_plan_decom" {
 
   log_analytics_workspace_id = var.law_id
   tags                       = module.tags.tags
+
+  depends_on = [time_sleep.wvd_power_on_off]
 }
 
 # ---------------------------------------------------------------------------
@@ -229,7 +233,8 @@ module "dcr_msh" {
   tags                       = module.tags.tags
 }
 
-# Legacy Desktop Virtualization Power On Off Contributor — AVD broker + mult lab subs
+# Legacy Desktop Virtualization Power On Off Contributor — AVD broker + mult lab subs.
+# Required before scaling plans can associate to host pools (Azure Autoscale API).
 locals {
   wvd_power_on_off_scopes = var.wvd_power_on_off_principal_id == null ? {} : merge(
     { avd = var.azure_subscription_id },
@@ -243,4 +248,13 @@ resource "azurerm_role_assignment" "wvd_power_on_off" {
   scope                = "/subscriptions/${each.value}"
   role_definition_name = "Desktop Virtualization Power On Off Contributor"
   principal_id         = var.wvd_power_on_off_principal_id
+}
+
+# RBAC propagation delay — Autoscale rejects host-pool links until the WVD SP
+# can read/power the pools (re-apply alone often fails without this wait).
+resource "time_sleep" "wvd_power_on_off" {
+  count = length(local.wvd_power_on_off_scopes) > 0 ? 1 : 0
+
+  create_duration = "90s"
+  depends_on      = [azurerm_role_assignment.wvd_power_on_off]
 }

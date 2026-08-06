@@ -156,4 +156,6 @@ module "scaling_plan_pers" {
   }
 
   tags = module.tags.tags
+
+  depends_on = [time_sleep.wvd_power_on_off]
 }

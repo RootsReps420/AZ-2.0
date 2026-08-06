@@ -33,10 +33,11 @@ locals {
   # azurerm_virtual_desktop_scaling_plan requires ≥1 `schedule` block even when
   # real schedules are personal (azapi). PERS/PRIV pass only personal_schedules —
   # without a placeholder, plan fails: "Insufficient schedule blocks".
+  # Name must start/end alphanumeric (Azure rejects leading underscore).
   # Real personal behaviour comes from azapi_resource.personal_schedule below.
   pooled_schedules_effective = length(var.pooled_schedules) > 0 ? var.pooled_schedules : (
     length(var.personal_schedules) > 0 ? {
-      "_tf_placeholder" = {
+      "tfplaceholder" = {
         days_of_week                         = ["Monday"]
         ramp_up_start_time                   = "00:00"
         ramp_up_load_balancing_algorithm     = "BreadthFirst"

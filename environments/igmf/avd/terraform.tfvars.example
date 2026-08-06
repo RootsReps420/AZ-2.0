@@ -28,5 +28,6 @@ mandatory_tags = {
 #   }
 # }
 
-# WVD Power On Off — leave unset for sandbox
-# wvd_power_on_off_principal_id = "REPLACE-WVD-SP-OBJECT-ID"
+# WVD Power On Off — required for scaling-plan ↔ host-pool association.
+# AppId 9cdead84-a844-4324-93f2-b2e6bb768d07 (Azure Virtual Desktop) object ID in IGMF tenant.
+wvd_power_on_off_principal_id = "b3dae7b4-f5b2-4aae-9935-da2c5a90a6e4"

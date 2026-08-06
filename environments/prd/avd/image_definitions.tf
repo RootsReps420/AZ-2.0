@@ -1,4 +1,6 @@
-# Auto-ported from legacy images/.../params/gallery/configSets.json galleryStandard (50 defs)
+# Auto-ported from legacy images/.../params/gallery/configSets.json galleryStandard (50 defs).
+# identifier.sku = marketplace source lineage; module suffixes sku with definition
+# name for Azure SIG uniqueness (publisher/offer/sku must be unique per gallery).
 locals {
   image_definitions = {
     "windows-desktop-11-gen2-22h2ent-mult-tl-000"    = { os_type = "Windows", hyper_v_generation = "V2", security_type = "TrustedLaunch", identifier = { publisher = "MicrosoftWindowsDesktop", offer = "office-365", sku = "win11-22h2-avd-m365" }, legacy_name = "img-windows-desktop-11-gen2-22h2ent-mult-tl-000" }

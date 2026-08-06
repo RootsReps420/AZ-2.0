@@ -41,10 +41,15 @@ resource "azurerm_shared_image" "this" {
 
   accelerated_network_support_enabled = var.accelerated_network_support_enabled
 
+  # Gallery identifier triple must be unique within the gallery (Azure 409
+  # OperationNotAllowed if publisher/offer/sku collides). Catalog entries often
+  # share a marketplace source SKU across BU/variant defs (e.g. mult-tl-000..999);
+  # append var.name so each definition gets a distinct sku while preserving the
+  # source lineage in the sku prefix. Packer still targets defs by name.
   identifier {
     publisher = var.identifier.publisher
     offer     = var.identifier.offer
-    sku       = var.identifier.sku
+    sku       = "${var.identifier.sku}-${var.name}"
   }
 
   tags = var.tags

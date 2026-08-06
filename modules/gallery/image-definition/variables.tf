@@ -54,7 +54,12 @@ variable "os_type" {
 }
 
 variable "identifier" {
-  description = "Image identifier triple (publisher, offer, sku). Referenced by Packer .pkr.hcl variable files."
+  description = <<-EOT
+    Image identifier (publisher, offer, sku). Catalog `sku` is the marketplace
+    source lineage; the module appends the definition name to `sku` at apply time
+    because Azure Compute Gallery requires a unique publisher/offer/sku per
+    gallery (duplicate triples return 409 OperationNotAllowed).
+  EOT
   type = object({
     publisher = string
     offer     = string

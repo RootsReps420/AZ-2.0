@@ -1,4 +1,7 @@
-# Auto-ported from legacy images/.../params/gallery/configSets.json galleryStandard (50 defs)
+# Auto-ported from legacy images/.../params/gallery/configSets.json galleryStandard (50 defs).
+# identifier.sku values are marketplace source lineage (what Packer builds from).
+# Azure SIG requires unique publisher/offer/sku per gallery — the image-definition
+# module appends the map key to sku at apply (see modules/gallery/image-definition).
 locals {
   image_definitions = {
     "windows-desktop-11-gen2-22h2ent-mult-tl-000"    = { os_type = "Windows", hyper_v_generation = "V2", security_type = "TrustedLaunch", identifier = { publisher = "MicrosoftWindowsDesktop", offer = "office-365", sku = "win11-22h2-avd-m365" }, legacy_name = "img-windows-desktop-11-gen2-22h2ent-mult-tl-000" }

@@ -55,10 +55,11 @@ variable "os_type" {
 
 variable "identifier" {
   description = <<-EOT
-    Image identifier (publisher, offer, sku). Catalog `sku` is the marketplace
-    source lineage; the module appends the definition name to `sku` at apply time
-    because Azure Compute Gallery requires a unique publisher/offer/sku per
-    gallery (duplicate triples return 409 OperationNotAllowed).
+    Marketplace source lineage (publisher/offer/sku) from the catalog. Used for
+    publisher + offer on the gallery definition. Gallery sku is set to the
+    definition name (var.name) so (publisher, offer, sku) is unique and ≤64
+    chars — Azure SIG limit. TDA naming applies to the Azure resource name via
+    modules/naming, not to this identifier block.
   EOT
   type = object({
     publisher = string

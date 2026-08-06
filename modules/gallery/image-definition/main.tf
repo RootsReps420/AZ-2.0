@@ -41,15 +41,18 @@ resource "azurerm_shared_image" "this" {
 
   accelerated_network_support_enabled = var.accelerated_network_support_enabled
 
-  # Gallery identifier triple must be unique within the gallery (Azure 409
-  # OperationNotAllowed if publisher/offer/sku collides). Catalog entries often
-  # share a marketplace source SKU across BU/variant defs (e.g. mult-tl-000..999);
-  # append var.name so each definition gets a distinct sku while preserving the
-  # source lineage in the sku prefix. Packer still targets defs by name.
+  # identifier publisher/offer/sku are Azure SIG metadata — NOT TDA resource names.
+  # TDA naming applies to the definition *resource name* via modules/naming above
+  # (uks-{sub}-img-{description}).
+  #
+  # Azure requires a unique (publisher, offer, sku) per gallery and caps sku at
+  # 64 chars. Catalog identifier.sku is marketplace source lineage (often reused
+  # across BU/variant defs). Use var.name (catalog key, already unique, ≤46) as
+  # the gallery sku so we stay under 64 without truncating TDA names.
   identifier {
     publisher = var.identifier.publisher
     offer     = var.identifier.offer
-    sku       = "${var.identifier.sku}-${var.name}"
+    sku       = var.name
   }
 
   tags = var.tags

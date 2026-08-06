@@ -103,7 +103,17 @@ module "hostpool" {
   tags                       = module.tags.tags
 }
 
-# One scaling plan per host pool — schedules from shared catalog (BU 005 + canary variants)
+# One scaling plan per host pool — schedules from shared catalog (BU 005 + canary variants).
+#
+# TODO(poolSPType): Legacy does NOT manually swap plans. Rotation/decom pipelines
+# (vdi_mult_sessionhost_*) set host-pool status/spType; VDI_Environment_Helpers.psm1
+# injects poolSPType (RotationGrace → Decom, else Standard); Mult_DeployAVD /
+# vdi_mult_avd_release then puts the HP in exactly ONE plan's hostPoolReferences
+# (inactive sibling = empty array). Azure allows only one association per pool.
+# Today TF always associates Standard and leaves decom empty — fine for steady
+# state / first cutover, but will fight live rotation on re-apply. Before cutover
+# with active rotation: discover live poolSPType (ARG/status) and drive which
+# module gets the association (never both; never enabled=false dual-link).
 module "scaling_plan" {
   source   = "../../../modules/avd/scalingplan"
   for_each = local.msh_host_pools
@@ -119,6 +129,7 @@ module "scaling_plan" {
   pooled_schedules = {
     for sk in each.value.schedule_keys : sk => local.msh_schedule_catalog[sk]
   }
+  # Steady-state assumption: Standard. See TODO(poolSPType) above.
   host_pool_associations = {
     (each.key) = {
       hostpool_id          = module.hostpool[each.key].hostpool_id
@@ -146,12 +157,9 @@ module "scaling_plan_decom" {
   pooled_schedules = {
     standard_week_schedule = local.msh_decom_schedule
   }
-  host_pool_associations = {
-    (each.key) = {
-      hostpool_id          = module.hostpool[each.key].hostpool_id
-      scaling_plan_enabled = false # Standard active by default; toggle via ops when pool in decom
-    }
-  }
+  # Unattached until poolSPType=Decom (see TODO on module.scaling_plan). Plan object
+  # must exist so rotation can point the HP here without recreating schedules.
+  host_pool_associations = {}
 
   log_analytics_workspace_id = var.law_id
   tags                       = module.tags.tags

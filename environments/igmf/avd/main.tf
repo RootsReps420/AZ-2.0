@@ -149,12 +149,10 @@ module "scaling_plan_decom" {
   pooled_schedules = {
     standard_week_schedule = local.msh_decom_schedule
   }
-  host_pool_associations = {
-    (each.key) = {
-      hostpool_id          = module.hostpool[each.key].hostpool_id
-      scaling_plan_enabled = false # Standard active by default; toggle via ops when pool in decom
-    }
-  }
+  # Azure allows only ONE scaling plan per host pool (even if disabled).
+  # Standard plan owns the association; ops attach/detach this decom sibling
+  # when a pool enters/leaves decom (do not wire both here).
+  host_pool_associations = {}
 
   log_analytics_workspace_id = var.law_id
   tags                       = module.tags.tags

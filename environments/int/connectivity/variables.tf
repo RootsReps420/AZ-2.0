@@ -58,6 +58,12 @@ variable "hub02_address_prefix" {
   default     = "10.170.246.0/24"
 }
 
+# variable "hub03_address_prefix" {
+#  description = "Hub03 (spare / bare) reserved virtual hub address prefix. SPARE — not deployed until module hub_spare is uncommented in main.tf. Region-agnostic when enabled."
+#  type        = string
+#  default     = "10.170.247.0/24"
+#}
+
 variable "dns_servers" {
   description = "Corporate DNS servers (legacy p_dnsServers)."
   type        = list(string)

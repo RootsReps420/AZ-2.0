@@ -643,7 +643,7 @@ flowchart LR
 
 | Field                    | Value                                                                                                               |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| **Pipeline**             | `[tf-Hub-Deployment.yml](pipelines/tf-Hub-Deployment.yml)` (`hubSelection`: `hub01` | `hub02` | `both`)             |
+| **Pipeline**             | `[tf-Hub-Deployment.yml](pipelines/tf-Hub-Deployment.yml)` (`hubSelection`: `hub01`                                 |
 | **Working directory**    | `environments/<env>/connectivity`                                                                                   |
 | **Region values**        | `environments/region/<location>/<env>.connectivity.tfvars`                                                          |
 | **State key**            | `{env}/connectivity.tfstate` (uksouth) or `{env}/{location}/connectivity.tfstate`                                   |
@@ -673,23 +673,23 @@ flowchart LR
 ### What it creates
 
 
-| Resource                | Notes                                                                                                                                   |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Firewall policy         | SKU Standard; DNS proxy **on**; servers = corporate DNS; **rule collections empty** (full Secure Hub rules → Azure Policy / later work) |
-| Hub01 (`hub-secured`)   | Virtual hub + **AZFW_Hub** + ExpressRoute gateway (`scale_units = 1`) + **Routing Intent**: InternetTraffic + PrivateTraffic → firewall |
-| Hub02 (`hub-unsecured`) | Virtual hub + VPN gateway shell (`scale_unit = 1`, routing preference Microsoft Network). **No VPN site / connection yet**              |
-| Hub03 (`hub-spare`)     | **Not in apply** — CIDR var retained; `module "hub_spare"` commented out. Uncomment to deploy (region-agnostic).                        |
-| ER circuit connection   | Only if `expressroute_circuit_peering_id` set (default `null`)                                                                          |
+| Resource                | Notes                                                                                                                                                                                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Firewall policy         | SKU Standard; DNS proxy **on**; servers = corporate DNS; **rule collections empty** (full Secure Hub rules → Azure Policy / later work)                                                                                                           |
+| Hub01 (`hub-secured`)   | Virtual hub + **AZFW_Hub** + ExpressRoute gateway (`scale_units = 1`) + **Routing Intent**: InternetTraffic + PrivateTraffic → firewall**NOTE:** int & prd ++will++ have our instances pinned at 30 (like Az 1.0); still need to carry this out. |
+| Hub02 (`hub-unsecured`) | Virtual hub + VPN gateway shell (`scale_unit = 1`, routing preference Microsoft Network). **No VPN site / connection yet**                                                                                                                        |
+| Hub03 (`hub-spare`)     | **Not in apply** — CIDR var retained; `module "hub_spare"` commented out. Uncomment to deploy (region-agnostic).                                                                                                                                  |
+| ER circuit connection   | Only if `expressroute_circuit_peering_id` set (default `null`)                                                                                                                                                                                    |
 
 
 **Hub address prefixes** come from the **region tfvars** (not hardcoded in `main.tf`):
 
 
-| Env  | Region file (uksouth)                                                                             | Hub01                         | Hub02             | Hub03                       |
-| ---- | ------------------------------------------------------------------------------------------------- | ----------------------------- | ----------------- | --------------------------- |
-| int  | `[region/uksouth/int.connectivity.tfvars](environments/region/uksouth/int.connectivity.tfvars)`   | `10.170.245.0/24`             | `10.170.246.0/24` | —                           |
-| prd  | `[region/uksouth/prd.connectivity.tfvars](environments/region/uksouth/prd.connectivity.tfvars)`   | `10.218.64.0/22`              | `10.218.68.0/22`  | `10.218.72.0/22` (reserved) |
-| igmf | `[region/uksouth/igmf.connectivity.tfvars](environments/region/uksouth/igmf.connectivity.tfvars)` | same as int (isolated tenant) | same              | —                           |
+| Env  | Region file (uksouth)                                                                             | Hub01                         | Hub02             | Hub03                          |
+| ---- | ------------------------------------------------------------------------------------------------- | ----------------------------- | ----------------- | ------------------------------ |
+| int  | `[region/uksouth/int.connectivity.tfvars](environments/region/uksouth/int.connectivity.tfvars)`   | `10.170.245.0/24`             | `10.170.246.0/24` | `10.170.247.0/24` `(reserved)` |
+| prd  | `[region/uksouth/prd.connectivity.tfvars](environments/region/uksouth/prd.connectivity.tfvars)`   | `10.218.64.0/22`              | `10.218.68.0/22`  | `10.218.72.0/22` (reserved)    |
+| igmf | `[region/uksouth/igmf.connectivity.tfvars](environments/region/uksouth/igmf.connectivity.tfvars)` | same as int (isolated tenant) | same              | same                           |
 
 
 Italy/Spain connectivity tfvars exist with the same tag standard; **hub CIDRs are blank** until the regional address plan is filled — do not apply those locations yet.

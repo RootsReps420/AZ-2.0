@@ -10,7 +10,7 @@
 #   - One MSH lab           : spoke-msh, hostpool, workspace
 #   - Images                : gallery, image-definition (PERS + MSH base)
 #
-# The global Virtual WAN lives in environments/vwan; its id is passed in via
+# The global Virtual WAN lives in config/vwan; its id is passed in via
 # var.virtual_wan_id.
 # ---------------------------------------------------------------------------
 

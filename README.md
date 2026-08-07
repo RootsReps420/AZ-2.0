@@ -76,7 +76,7 @@ Port the legacy Azure 1.0 VDI estate (Bicep + PowerShell across platform / pers 
 
 ```mermaid
 flowchart TB
-  subgraph global ["environments/vwan"]
+  subgraph global ["config/vwan"]
     VWAN[Azure Virtual WAN]
   end
 
@@ -208,7 +208,7 @@ flowchart TB
 ### Apply order (mandatory)
 
 ```text
-1. environments/vwan
+1. config/vwan
 2. environments/<env>/connectivity
 3. environments/<env>/mgmt
 4. environments/<env>/labs
@@ -221,8 +221,9 @@ Stacks do **not** use remote-state data sources today. Wire outputs into the nex
 ### Repo layout (cutover)
 
 ```text
+config/
+  vwan/                    # Shared Virtual WAN (not an env)
 environments/
-  vwan/                    # Shared Virtual WAN
   int/{connectivity,mgmt,labs,avd}/
   prd/{connectivity,mgmt,labs,avd}/
   igmf/{connectivity,mgmt,labs,avd}/   # sandbox — not bank cutover
@@ -249,7 +250,7 @@ Shared env + **location** → service connection / agent / backend mapping lives
 
 | Pipeline | Stack | Working directory (uksouth) | Deploys |
 |---|---|---|---|
-| [`tf-vWAN-Deployment.yml`](pipelines/tf-vWAN-Deployment.yml) | `vwan` | `environments/vwan` | Virtual WAN |
+| [`tf-vWAN-Deployment.yml`](pipelines/tf-vWAN-Deployment.yml) | `vwan` | `config/vwan` | Virtual WAN |
 | [`tf-Hub-Deployment.yml`](pipelines/tf-Hub-Deployment.yml) | connectivity | `environments/<env>/connectivity` | FWP + Hub01 / Hub02 |
 | [`tf-Hub-Management-Deployment.yml`](pipelines/tf-Hub-Management-Deployment.yml) | mgmt | `environments/<env>/mgmt` | LAW, alerts, AgentsSubnet |
 | [`tf-AVD-Labs-Deployment.yml`](pipelines/tf-AVD-Labs-Deployment.yml) | labs | `environments/<env>/labs` | spokes, FSLogix, KVs, blobs |
@@ -306,7 +307,7 @@ flowchart LR
    - uksouth prd → `SC-P-VDI-PRD-C-01` on pool `uks-prd-vdi-mgmt-vss-01`
    - uksouth igmf → `SC-IGMF-VDI-TF-01` on hosted `Azure Pipelines` (+ variable group `tf-backend-igmf`; **seeds** tfvars from examples)
    - italynorth / spaincentral → placeholder `TODO-<env>-<location>-SC` on hosted pool
-3. Job logs a **deployment scope banner** (env, location, stack, SC), then working directory = `environments/vwan` or `environments/<env>/<stack>` (uksouth) or `environments/<env>/<location>/<stack>` (other).
+3. Job logs a **deployment scope banner** (env, location, stack, SC), then working directory = `config/vwan` or `environments/<env>/<stack>` (uksouth) or `environments/<env>/<location>/<stack>` (other).
 4. State key = `{env}/{stack}.tfstate` (uksouth) or `{env}/{location}/{stack}.tfstate` (other) in the configured storage container (`tf.backend.*`).
 5. Plan/apply/destroy always pass `-var=location=<slug>`. Connectivity also uses `enable_hub01` / `enable_hub02` (one state file). Phased first deploy: `hub01` then `hub02`. Details: [`pipelines/README.md`](pipelines/README.md).
 6. Order of applies across runs must still be `vwan` → `connectivity` → `mgmt` → `labs` → `avd`.
@@ -365,7 +366,7 @@ These keep running in AzDo against the Azure objects Terraform created. They nee
 | Field | Value |
 |---|---|
 | **Pipeline** | [`tf-vWAN-Deployment.yml`](pipelines/tf-vWAN-Deployment.yml) (or `tf-release.yml` with `stackName=vwan`) |
-| **Working directory** | `environments/vwan` |
+| **Working directory** | `config/vwan` |
 | **State key** | `{env}/vwan.tfstate` (e.g. `int/vwan.tfstate` when queued with `envName=int`) |
 | **Depends on** | Nothing (first apply) |
 | **Feeds** | connectivity `virtual_wan_id` |
@@ -641,7 +642,7 @@ Every environment stack is thin glue: it calls these modules with env-specific m
 
 | Module | What it does | Used by |
 |---|---|---|
-| [`modules/platform/vwan`](modules/platform/vwan) | Creates the **Azure Virtual WAN** (Standard SKU). One shared backbone. | `environments/vwan` |
+| [`modules/platform/vwan`](modules/platform/vwan) | Creates the **Azure Virtual WAN** (Standard SKU). One shared backbone. | `config/vwan` |
 | [`modules/platform/firewall-policy`](modules/platform/firewall-policy) | Creates **Firewall Policy** + optional IP groups + rule collection groups. Today: DNS proxy on, **rule collections stub/empty** (full Secure Hub rules → Azure Policy later). | `connectivity` → attached to Hub01 firewall |
 | [`modules/platform/hub-secured`](modules/platform/hub-secured) | **Hub01**: virtual hub + AZFW_Hub + ExpressRoute gateway + Routing Intent (Internet + Private → firewall). Outputs `hub_id`, `firewall_private_ip`. | `connectivity` |
 | [`modules/platform/hub-unsecured`](modules/platform/hub-unsecured) | **Hub02**: virtual hub + VPN gateway shell (no firewall, no Routing Intent). VPN site/connection not added yet. | `connectivity` |

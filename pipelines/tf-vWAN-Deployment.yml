@@ -1,7 +1,7 @@
 # Shared Virtual WAN (vwan). One stack per run.
 # Apply before Hub / mgmt / labs / avd.
 # envName=igmf seeds terraform.tfvars from environments/igmf/global.tfvars.example (uksouth only).
-# location selects Azure region; vwan workdir stays environments/vwan for all locations.
+# location selects Azure region; vwan workdir stays config/vwan for all locations.
 
 trigger: none
 
@@ -52,7 +52,7 @@ stages:
           tfBackendStorageAccount: $(tfBackendStorageAccount)
           tfBackendContainer: $(tfBackendContainer)
           action: ${{ parameters.action }}
-          workingDirectory: environments/vwan
+          workingDirectory: config/vwan
           seedIgmfTfvars: ${{ and(eq(parameters.envName, 'igmf'), eq(parameters.location, 'uksouth')) }}
           stageLabel: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — Virtual WAN
           scopeManifest: |

@@ -27,10 +27,10 @@ All entry pipelines take `location` alongside `envName`:
 
 | `location` | Working directory | State key | Identity |
 |---|---|---|---|
-| `uksouth` | `environments/<env>/<stack>` (`vwan` → `environments/vwan`) | `{env}/{stack}.tfstate` | Live SC / agents from [`templates/env-context.yml`](templates/env-context.yml) |
+| `uksouth` | `environments/<env>/<stack>` (`vwan` → `config/vwan`) | `{env}/{stack}.tfstate` | Live SC / agents from [`templates/env-context.yml`](templates/env-context.yml) |
 | `italynorth` / `spaincentral` | `environments/<env>/<location>/<stack>` | `{env}/{location}/{stack}.tfstate` | Placeholder SC `TODO-<env>-<location>-SC`, hosted `Azure Pipelines` |
 
-`vwan` workdir is always `environments/vwan` (shared WAN). Non-uksouth still gets a location-scoped state key and `-var=location=…`.
+`vwan` workdir is always `config/vwan` (shared WAN). Non-uksouth still gets a location-scoped state key and `-var=location=…`.
 
 **State key rename:** if you already have `{env}/_global.tfstate`, rename the blob to `{env}/vwan.tfstate` before the next apply.
 

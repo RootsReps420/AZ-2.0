@@ -22,7 +22,7 @@ variable "subscription_code" {
   default     = "conn"
 }
 
-# Sourced from environments/vwan output vwan_id (state key igmf/vwan.tfstate).
+# Sourced from config/vwan output vwan_id (state key igmf/vwan.tfstate).
 variable "virtual_wan_id" {
   description = "Resource ID of the shared Virtual WAN."
   type        = string

@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------
-# environments/vwan
+# config/vwan
 #
 # Resources deployed ONCE and shared across all regions/environments.
 # Currently: the global Virtual WAN (+ its resource group).

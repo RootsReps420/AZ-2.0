@@ -85,7 +85,7 @@ stages:
             tfBackendStorageAccount: $(tfBackendStorageAccount)
             tfBackendContainer: $(tfBackendContainer)
             action: ${{ parameters.action }}
-            workingDirectory: environments/vwan
+            workingDirectory: config/vwan
             seedIgmfTfvars: ${{ and(eq(parameters.envName, 'igmf'), eq(parameters.location, 'uksouth')) }}
             stageLabel: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — Virtual WAN
             scopeManifest: |

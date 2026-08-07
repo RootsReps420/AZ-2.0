@@ -28,9 +28,9 @@ variable "subscription_code_vdi" {
   default     = "vdi"
 }
 
-# TODO(deploy): set to the environments/vwan output `vwan_id` for this tenant.
+# TODO(deploy): set to the config/vwan output `vwan_id` for this tenant.
 variable "virtual_wan_id" {
-  description = "Resource ID of the global Virtual WAN. Sourced from the environments/vwan workspace output vwan_id."
+  description = "Resource ID of the global Virtual WAN. Sourced from the config/vwan workspace output vwan_id."
   type        = string
 }
 

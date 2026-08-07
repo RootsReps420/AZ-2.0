@@ -1,4 +1,4 @@
-# environments/vwan
+# config/vwan
 
 Root configuration for resources deployed **once** and shared across all
 regions and environments. Currently deploys the global **Virtual WAN** and its

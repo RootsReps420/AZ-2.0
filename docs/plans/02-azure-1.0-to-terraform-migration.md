@@ -53,7 +53,7 @@ Minimum set required to deploy a working (ish) two-hub vWAN via Terraform + AzDo
 
 | Capability | Module / home | Status for functional-ish |
 |---|---|---|
-| Shared Virtual WAN | `platform/vwan` + `environments/vwan` | Ready |
+| Shared Virtual WAN | `platform/vwan` + `config/vwan` | Ready |
 | Secured hub (firewall + ER GW + routing intent) | `platform/hub-secured` | Ready (needs `firewall_policy_id`; ER circuit peering id external) |
 | Baseline firewall policy (stub/minimal) | `platform/firewall-policy` | Module ready; env currently empty rules - need thin baseline under RI or traffic default-denies |
 | Unsecured hub + VPN gateway | `platform/hub-unsecured` | Gateway scaffold ready; **VPN site/connection surface missing** - deferred with other engineer |
@@ -88,8 +88,9 @@ vdi-terraform/
 │   ├── core/{spoke-pers,spoke-msh,keyvault,storage-fslogix}/
 │   ├── avd/{hostpool,workspace,scalingplan}/
 │   └── gallery/{gallery,image-definition}/
+├── config/
+│   └── vwan/                        # shared Virtual WAN (not an env)
 ├── environments/                    # root stacks (multi-subscription via per-scope roots / provider aliases)
-│   ├── vwan/                        # shared Virtual WAN
 │   ├── idv/ ici/ itt/ int/          # dev-tier env codes (kept split for now)
 │   │   └── <env>/
 │   │       ├── connectivity/        # hub-secured + firewall-policy   (connectivity subscription)

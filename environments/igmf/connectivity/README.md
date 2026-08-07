@@ -8,7 +8,7 @@ Deploys (gated by `enable_hub01` / `enable_hub02`, both default `true`):
 - Hub01 secured (AZFW + routing intent + ER gateway shell)
 - Hub02 unsecured (VPN gateway shell — no peer)
 
-Requires `virtual_wan_id` from `environments/vwan` applied with state key `igmf/vwan.tfstate`.
+Requires `virtual_wan_id` from `config/vwan` applied with state key `igmf/vwan.tfstate`.
 
 ## Pipelines
 

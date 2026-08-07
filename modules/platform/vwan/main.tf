@@ -2,7 +2,7 @@
 # Platform — Virtual WAN
 #
 # Deploys the Azure Virtual WAN. This is a GLOBAL resource: deployed once (in
-# environments/vwan) and shared across all regions. Hub modules attach to
+# config/vwan) and shared across all regions. Hub modules attach to
 # the vwan_id output: Hub01 secured, Hub02 unsecured. Hub03 spare (hub-spare
 # module) is optional — kept in code, commented out in env roots until needed.
 #

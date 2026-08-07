@@ -1,4 +1,4 @@
-# Copy to environments/vwan/terraform.tfvars when applying via IGMF pipelines
+# Copy to config/vwan/terraform.tfvars when applying via IGMF pipelines
 # (state key: igmf/vwan.tfstate). Do not commit terraform.tfvars.
 
 azure_subscription_id = "cc1ccb8d-18a1-4dca-aa5a-54607876c990" # IGMF sandbox subscription

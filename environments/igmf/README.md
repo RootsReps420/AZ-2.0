@@ -87,7 +87,7 @@ Still deploys 30 MSH pools + gallery. Prefer `enable_pers_host_pools = false` / 
 | labs | Full spoke code; thin flags in example |
 | avd | Full catalogs; optional |
 
-`vwan` is shared under `environments/vwan`; IGMF seeds from
+`vwan` is shared under `config/vwan`; IGMF seeds from
 [`global.tfvars.example`](global.tfvars.example) (state `igmf/vwan.tfstate`).
 
 ## Bank landmines (do not bring into IGMF)

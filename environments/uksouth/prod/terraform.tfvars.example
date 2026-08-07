@@ -5,8 +5,8 @@ environment           = "prd" # TDA §4 uses "prd" (not "prod")
 subscription_code_conn = "conn"
 subscription_code_vdi  = "vdi"
 
-# Sourced from the environments/vwan workspace output `vwan_id`.
-virtual_wan_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/uks-conn-rsg-global/providers/Microsoft.Network/virtualWans/uks-conn-vwn-vdi-01" # TODO(deploy): real vWAN id (environments/vwan output vwan_id)
+# Sourced from the config/vwan workspace output `vwan_id`.
+virtual_wan_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/uks-conn-rsg-global/providers/Microsoft.Network/virtualWans/uks-conn-vwn-vdi-01" # TODO(deploy): real vWAN id (config/vwan output vwan_id)
 
 mandatory_tags = {
   costCentre             = "CLL411S1XJ"

@@ -3,7 +3,7 @@ location              = "uksouth"
 environment           = "igmf"
 subscription_code     = "conn"
 
-# From environments/vwan output vwan_id after igmf/vwan apply
+# From config/vwan output vwan_id after igmf/vwan apply
 virtual_wan_id = "/subscriptions/cc1ccb8d-18a1-4dca-aa5a-54607876c990/resourceGroups/uks-conn-rsg-global/providers/Microsoft.Network/virtualWans/uks-conn-vwn-vdi-01"
 
 mandatory_tags = {

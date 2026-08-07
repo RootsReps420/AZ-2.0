@@ -22,7 +22,7 @@ variable "subscription_code" {
   default     = "conn"
 }
 
-# Sourced from environments/vwan output vwan_id.
+# Sourced from config/vwan output vwan_id.
 variable "virtual_wan_id" {
   description = "Resource ID of the shared Virtual WAN."
   type        = string

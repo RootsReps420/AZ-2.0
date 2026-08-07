@@ -8,7 +8,7 @@ Deploys (gated by `enable_hub01` / `enable_hub02`, both default `true`):
 - Hub01 secured (AZFW + routing intent + ER gateway)
 - Hub02 unsecured (VPN gateway scaffold — peer/site deferred)
 
-Requires `virtual_wan_id` from `environments/vwan`.
+Requires `virtual_wan_id` from `config/vwan`.
 
 Phased first deploy: Hub01 only (`enable_hub02=false`), then both true. Narrowing a flag plans destroy of that hub. One state key: `int/connectivity.tfstate`.
 

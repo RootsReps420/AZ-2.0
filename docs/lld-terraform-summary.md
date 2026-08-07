@@ -40,8 +40,9 @@ vdi-terraform/
 │   ├── core/         # spokes, Key Vault, FSLogix
 │   ├── avd/          # host pools, workspaces, scaling
 │   └── gallery/
-├── environments/     # config only — call modules
-│   ├── vwan/         # Virtual WAN (once)
+├── config/           # shared platform config (not an env)
+│   └── vwan/         # Virtual WAN (once)
+├── environments/     # env-scoped config — call modules
 │   ├── uksouth/{dev,prod}/
 │   ├── italynorth/{dev,prod}/
 │   └── spaincentral/{dev,prod}/

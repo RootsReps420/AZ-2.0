@@ -363,7 +363,7 @@ avd            → naming, tags, hostpool, workspace, scalingplan, gallery, imag
 
 ```mermaid
 flowchart LR
-  PR[PR / manual release] --> TFP[AzDo: pipelines/tf-release.yml]
+  PR[PR / manual release] --> TFP[AzDo named TF pipelines]
   TFP -->|init plan apply| TF[Terraform stacks]
   TF -->|outputs: tokens hub IDs LAW STA names| OUT[(tfvars / pipeline vars)]
 
@@ -380,19 +380,27 @@ flowchart LR
 
 | File | Role |
 |---|---|
-| [`pipelines/templates/terraform-stack.yml`](../pipelines/templates/terraform-stack.yml) | Reusable job: install Terraform → `init` (azurerm backend) → `validate` → `plan` → `apply` or `destroy` |
-| [`pipelines/tf-release.yml`](../pipelines/tf-release.yml) | Parameterised release: pick `envName` (`int`/`prd`) + `stackName` (`_global`/`connectivity`/`mgmt`/`labs`/`avd`) + `action` (`plan`/`apply`/`destroy`) |
-| [`pipelines/tf-int-connectivity.yml`](../pipelines/tf-int-connectivity.yml) | Convenience wrapper for the first cutover stack |
+| [`pipelines/templates/terraform-stack.yml`](../pipelines/templates/terraform-stack.yml) | Reusable job: **scope banner** → install TF → `init` → `validate` → `plan` → `apply` or `destroy` |
+| [`pipelines/templates/connectivity-stages.yml`](../pipelines/templates/connectivity-stages.yml) | Expands Hub01 / Hub02 / both / destroy stages from `hubSelection` |
+| [`pipelines/tf-vWAN-Deployment.yml`](../pipelines/tf-vWAN-Deployment.yml) | Named: `_global` Virtual WAN |
+| [`pipelines/tf-Hub-Deployment.yml`](../pipelines/tf-Hub-Deployment.yml) | Named: connectivity + `hubSelection` (Hub02 includes VPN GW) |
+| [`pipelines/tf-Hub-Management-Deployment.yml`](../pipelines/tf-Hub-Management-Deployment.yml) | Named: `mgmt` |
+| [`pipelines/tf-AVD-Labs-Deployment.yml`](../pipelines/tf-AVD-Labs-Deployment.yml) | Named: `labs` |
+| [`pipelines/tf-AVD-Hostpool-Deployment.yml`](../pipelines/tf-AVD-Hostpool-Deployment.yml) | Named: `avd` |
+| [`pipelines/tf-release.yml`](../pipelines/tf-release.yml) | Catch-all: pick `envName` + `stackName` (+ hub selection when connectivity) — **not** a prerequisite |
+| [`pipelines/tf-int-connectivity.yml`](../pipelines/tf-int-connectivity.yml) | Convenience wrapper for int connectivity |
+| [`pipelines/tf-igmf-*.yml`](../pipelines/tf-igmf-release.yml) | IGMF sandbox equivalents |
 
 **How a release run works**
 
-1. You (or a parent pipeline) start `tf-release.yml` with e.g. `envName=int`, `stackName=connectivity`, `action=plan`.
+1. Queue a named pipeline (e.g. `tf-Hub-Deployment.yml` with `envName=int`, `hubSelection=hub01`, `action=plan`) or use `tf-release.yml` with the matching `stackName`.
 2. AzDo picks the env’s **service connection** and **agent pool**:
    - int → `SC-R-VDI-INT-C-01` on pool `uks-int-vdi-mgmt-vss-01`
    - prd → `SC-P-VDI-PRD-C-01` on pool `uks-prd-vdi-mgmt-vss-01`
-3. Working directory = `environments/_global` or `environments/<env>/<stack>`.
+3. Job logs a **deployment scope banner** (what will be managed), then working directory = `environments/_global` or `environments/<env>/<stack>`.
 4. State key = `{env}/{stack}.tfstate` in the configured storage container (backend RG/SA from AzDo variable group `tf.backend.*`).
-5. Order of applies across runs must still be `_global` → `connectivity` → `mgmt` → `labs` → `avd`. The YAML does **one stack per run** — you chain them.
+5. Connectivity uses `enable_hub01` / `enable_hub02` (one state file). Phased first deploy: `hub01` then `hub02`. `both` is one apply with both hubs. Destroy tears down the whole connectivity stack.
+6. Order of applies across runs must still be `_global` → `connectivity` → `mgmt` → `labs` → `avd`.
 
 **Not rewritten:** GLB common libraries. Same SPNs / private agents as legacy; only the deploy step is Terraform instead of Bicep.
 
@@ -433,7 +441,7 @@ These keep running in AzDo against the Azure objects Terraform created. They nee
 
 ### 3.6 End-to-end day-in-the-life
 
-1. **Infra change** (new CIDR, new alert, pool setting) → PR to this GitHub repo → `tf-release.yml` plan/apply on the right stack → state updates.
+1. Infra change (new CIDR, new alert, pool setting) → PR to this GitHub repo → named TF pipeline (or `tf-release.yml`) plan/apply on the right stack → state updates.
 2. **Colleague desktop request** → existing PERS ops pipeline → reads placement + **registration token** from the TF-managed host pool → builds VM into PERS/PRIV subnet → joins pool.
 3. **MSH capacity** → mult session-host pipeline → same pattern against MSH pools; FSLogix profiles land on TF-managed STAs.
 4. **New image version** → Packer pipeline publishes into TF-managed definition → next VM builds pick `latest` or pinned version.

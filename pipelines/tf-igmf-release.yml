@@ -2,7 +2,6 @@
 # Deploy order: _global → connectivity → mgmt → labs → avd.
 # Hardcoded IGMF AzDo identity — do NOT use bank SC / private agent pools.
 # Requires AzDo variable group: tf-backend-igmf
-#   (tf.backend.resourceGroup, tf.backend.storageAccount)
 
 trigger: none
 
@@ -17,6 +16,14 @@ parameters:
       - mgmt
       - labs
       - avd
+  - name: hubSelection
+    displayName: Hubs (connectivity only)
+    type: string
+    default: both
+    values:
+      - both
+      - hub01
+      - hub02
   - name: action
     displayName: Action
     type: string
@@ -47,18 +54,98 @@ variables:
       value: environments/igmf/${{ parameters.stackName }}
 
 stages:
-  - stage: terraform
-    displayName: Terraform ${{ parameters.action }} igmf/${{ parameters.stackName }}
-    jobs:
-      - template: templates/terraform-stack.yml
-        parameters:
-          envName: igmf
-          stackName: ${{ parameters.stackName }}
-          azureServiceConnection: $(azureServiceConnection)
-          agentPool: $(agentPool)
-          tfBackendResourceGroup: $(tfBackendResourceGroup)
-          tfBackendStorageAccount: $(tfBackendStorageAccount)
-          tfBackendContainer: $(tfBackendContainer)
-          action: ${{ parameters.action }}
-          workingDirectory: $(stackWorkingDirectory)
-          seedIgmfTfvars: true
+  - ${{ if eq(parameters.stackName, 'connectivity') }}:
+    - template: templates/connectivity-stages.yml
+      parameters:
+        envName: igmf
+        azureServiceConnection: $(azureServiceConnection)
+        agentPool: $(agentPool)
+        tfBackendResourceGroup: $(tfBackendResourceGroup)
+        tfBackendStorageAccount: $(tfBackendStorageAccount)
+        tfBackendContainer: $(tfBackendContainer)
+        action: ${{ parameters.action }}
+        hubSelection: ${{ parameters.hubSelection }}
+        workingDirectory: environments/igmf/connectivity
+        seedIgmfTfvars: true
+
+  - ${{ if eq(parameters.stackName, '_global') }}:
+    - stage: terraform
+      displayName: ${{ parameters.action }} igmf/_global — Virtual WAN
+      jobs:
+        - template: templates/terraform-stack.yml
+          parameters:
+            envName: igmf
+            stackName: _global
+            azureServiceConnection: $(azureServiceConnection)
+            agentPool: $(agentPool)
+            tfBackendResourceGroup: $(tfBackendResourceGroup)
+            tfBackendStorageAccount: $(tfBackendStorageAccount)
+            tfBackendContainer: $(tfBackendContainer)
+            action: ${{ parameters.action }}
+            workingDirectory: environments/_global
+            seedIgmfTfvars: true
+            stageLabel: ${{ parameters.action }} igmf — Virtual WAN
+            scopeManifest: |
+              - Shared Virtual WAN resource group
+              - Virtual WAN (IGMF sandbox)
+
+  - ${{ if eq(parameters.stackName, 'mgmt') }}:
+    - stage: terraform
+      displayName: ${{ parameters.action }} igmf/mgmt
+      jobs:
+        - template: templates/terraform-stack.yml
+          parameters:
+            envName: igmf
+            stackName: mgmt
+            azureServiceConnection: $(azureServiceConnection)
+            agentPool: $(agentPool)
+            tfBackendResourceGroup: $(tfBackendResourceGroup)
+            tfBackendStorageAccount: $(tfBackendStorageAccount)
+            tfBackendContainer: $(tfBackendContainer)
+            action: ${{ parameters.action }}
+            workingDirectory: environments/igmf/mgmt
+            seedIgmfTfvars: true
+            stageLabel: ${{ parameters.action }} igmf — management
+            scopeManifest: |
+              - Management resource group
+              - Log Analytics + mgmt spoke + alerts
+
+  - ${{ if eq(parameters.stackName, 'labs') }}:
+    - stage: terraform
+      displayName: ${{ parameters.action }} igmf/labs
+      jobs:
+        - template: templates/terraform-stack.yml
+          parameters:
+            envName: igmf
+            stackName: labs
+            azureServiceConnection: $(azureServiceConnection)
+            agentPool: $(agentPool)
+            tfBackendResourceGroup: $(tfBackendResourceGroup)
+            tfBackendStorageAccount: $(tfBackendStorageAccount)
+            tfBackendContainer: $(tfBackendContainer)
+            action: ${{ parameters.action }}
+            workingDirectory: environments/igmf/labs
+            seedIgmfTfvars: true
+            stageLabel: ${{ parameters.action }} igmf — AVD labs
+            scopeManifest: |
+              - Lab spokes + optional FSLogix / KVs / blob
+
+  - ${{ if eq(parameters.stackName, 'avd') }}:
+    - stage: terraform
+      displayName: ${{ parameters.action }} igmf/avd
+      jobs:
+        - template: templates/terraform-stack.yml
+          parameters:
+            envName: igmf
+            stackName: avd
+            azureServiceConnection: $(azureServiceConnection)
+            agentPool: $(agentPool)
+            tfBackendResourceGroup: $(tfBackendResourceGroup)
+            tfBackendStorageAccount: $(tfBackendStorageAccount)
+            tfBackendContainer: $(tfBackendContainer)
+            action: ${{ parameters.action }}
+            workingDirectory: environments/igmf/avd
+            seedIgmfTfvars: true
+            stageLabel: ${{ parameters.action }} igmf — AVD host pools
+            scopeManifest: |
+              - Host pools / gallery definitions / DCRs

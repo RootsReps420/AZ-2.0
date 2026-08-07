@@ -1,5 +1,6 @@
 # environments/igmf/connectivity — Hub01 + Hub02 + baseline firewall policy
 # IGMF sandbox (ignitemyfire.co.uk). Hub CIDRs reuse int defaults in an isolated tenant.
+# enable_hub01 / enable_hub02 gate modules for phased pipeline deploys (one state file).
 
 locals {
   location = var.location
@@ -33,6 +34,7 @@ resource "azurerm_resource_group" "connectivity" {
 
 # Baseline / stub policy so AZFW_Hub can attach. Full Secure-Hub rules → Azure Policy workstream.
 module "firewall_policy" {
+  count  = var.enable_hub01 ? 1 : 0
   source = "../../../modules/platform/firewall-policy"
 
   name                = "hub01"
@@ -52,6 +54,7 @@ module "firewall_policy" {
 }
 
 module "hub_secured" {
+  count  = var.enable_hub01 ? 1 : 0
   source = "../../../modules/platform/hub-secured"
 
   name                = "hub01"
@@ -62,7 +65,7 @@ module "hub_secured" {
 
   virtual_wan_id     = var.virtual_wan_id
   address_prefix     = var.hub01_address_prefix
-  firewall_policy_id = module.firewall_policy.policy_id
+  firewall_policy_id = module.firewall_policy[0].policy_id
 
   express_route = {
     scale_units        = 1
@@ -73,6 +76,7 @@ module "hub_secured" {
 }
 
 module "hub_unsecured" {
+  count  = var.enable_hub02 ? 1 : 0
   source = "../../../modules/platform/hub-unsecured"
 
   name                = "hub02"

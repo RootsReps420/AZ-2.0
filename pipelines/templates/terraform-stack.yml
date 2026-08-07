@@ -1,10 +1,12 @@
 # Reusable Terraform stack job (Phase H)
-# Expects variables: envName, stackName, azureServiceConnection, agentPool,
-#   tfBackendResourceGroup, tfBackendStorageAccount, tfBackendContainer,
-#   terraformVersion (optional)
+# Expects Azure service connection + backend storage params.
 #
 # Auth: AzureCLI@2 logs in as the service connection SP. azurerm refuses CLI auth
 # for service principals — export ARM_* and disable CLI auth (ARM_USE_CLI=false).
+#
+# Hub selection (connectivity only): pass enableHub01/enableHub02 explicitly for
+# staged Hub01→Hub02 applies, or hubSelection (both|hub01|hub02) to derive flags.
+# Destroy never passes hub -vars (full stack teardown).
 
 parameters:
   - name: envName
@@ -27,25 +29,84 @@ parameters:
     default: "1.9.0"
   - name: action
     type: string
-    default: apply # apply | plan | destroy
+    default: apply # plan | apply | destroy
   - name: workingDirectory
     type: string
     default: ""
-  # IGMF sandbox: copy committed *.tfvars.example → terraform.tfvars (gitignored) before plan.
   - name: seedIgmfTfvars
     type: boolean
     default: false
+  # Human label for job displayName (e.g. "Hub01 secured + firewall policy")
+  - name: stageLabel
+    type: string
+    default: ""
+  # Multiline bullet list of what this run manages (shown in scope banner)
+  - name: scopeManifest
+    type: string
+    default: ""
+  # Connectivity hub selection — used when enableHub01/02 are empty
+  - name: hubSelection
+    type: string
+    default: both # both | hub01 | hub02
+  # Explicit hub flags for staged applies (true/false/empty). Empty = derive from hubSelection.
+  - name: enableHub01
+    type: string
+    default: ""
+  - name: enableHub02
+    type: string
+    default: ""
 
 jobs:
   - job: terraform_${{ parameters.envName }}_${{ parameters.stackName }}
-    displayName: TF ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.stackName }}
+    displayName: ${{ coalesce(parameters.stageLabel, format('TF {0} {1}/{2}', parameters.action, parameters.envName, parameters.stackName)) }}
     pool:
       name: ${{ parameters.agentPool }}
     variables:
       stackDir: ${{ coalesce(parameters.workingDirectory, format('environments/{0}/{1}', parameters.envName, parameters.stackName)) }}
       stateKey: ${{ parameters.envName }}/${{ parameters.stackName }}.tfstate
+      # Resolve hub flags for connectivity plan/apply
+      ${{ if ne(parameters.enableHub01, '') }}:
+        resolvedEnableHub01: ${{ parameters.enableHub01 }}
+      ${{ elseif eq(parameters.hubSelection, 'hub02') }}:
+        # Additive Hub02 stage: keep Hub01 so it is not destroyed
+        resolvedEnableHub01: "true"
+      ${{ elseif eq(parameters.hubSelection, 'hub01') }}:
+        resolvedEnableHub01: "true"
+      ${{ else }}:
+        resolvedEnableHub01: "true"
+      ${{ if ne(parameters.enableHub02, '') }}:
+        resolvedEnableHub02: ${{ parameters.enableHub02 }}
+      ${{ elseif eq(parameters.hubSelection, 'hub01') }}:
+        resolvedEnableHub02: "false"
+      ${{ else }}:
+        resolvedEnableHub02: "true"
     steps:
       - checkout: self
+
+      - task: Bash@3
+        displayName: Deployment scope banner
+        inputs:
+          targetType: inline
+          script: |
+            set -euo pipefail
+            echo "=== Deployment scope ==="
+            echo "Env      : ${{ parameters.envName }}"
+            echo "Stack    : ${{ parameters.stackName }}"
+            echo "Action   : ${{ parameters.action }}"
+            echo "State    : $(stateKey)"
+            echo "Workdir  : $(stackDir)"
+            if [ "${{ parameters.stackName }}" = "connectivity" ] && [ "${{ parameters.action }}" != "destroy" ]; then
+              echo "Hub flags: enable_hub01=$(resolvedEnableHub01) enable_hub02=$(resolvedEnableHub02) (hubSelection=${{ parameters.hubSelection }})"
+              if [ "${{ parameters.hubSelection }}" != "both" ] && [ -z "${{ parameters.enableHub01 }}${{ parameters.enableHub02 }}" ]; then
+                echo "##vso[task.logissue type=warning]hubSelection=${{ parameters.hubSelection }} — narrowing hubs can destroy deselected hubs if they already exist in state."
+              fi
+            fi
+            if [ -n "${{ parameters.scopeManifest }}" ]; then
+              echo ""
+              echo "Will deploy / manage:"
+              printf '%s\n' "${{ parameters.scopeManifest }}"
+            fi
+            echo "========================"
 
       - task: Bash@3
         displayName: Seed IGMF terraform.tfvars from examples
@@ -144,7 +205,16 @@ jobs:
           workingDirectory: $(Build.SourcesDirectory)/$(stackDir)
           script: |
             set -euo pipefail
-            terraform plan -input=false -out=tfplan
+            EXTRA_VARS=()
+            if [ "${{ parameters.stackName }}" = "connectivity" ]; then
+              EXTRA_VARS+=(-var="enable_hub01=$(resolvedEnableHub01)")
+              EXTRA_VARS+=(-var="enable_hub02=$(resolvedEnableHub02)")
+              echo "Plan with ${EXTRA_VARS[*]}"
+            fi
+            terraform plan -input=false "${EXTRA_VARS[@]}" -out=tfplan
+            echo ""
+            echo "=== Planned changes (summary) ==="
+            terraform show -no-color tfplan | tail -n 80 || true
 
       - task: Bash@3
         displayName: Terraform apply
@@ -176,4 +246,5 @@ jobs:
           workingDirectory: $(Build.SourcesDirectory)/$(stackDir)
           script: |
             set -euo pipefail
+            # Full stack destroy — do not pass hub enable flags
             terraform destroy -input=false -auto-approve

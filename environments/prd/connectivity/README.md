@@ -12,6 +12,8 @@ Composition:
 
 Plus baseline firewall policy (DNS proxy on; rule collections stub).
 
+Hub modules are gated by `enable_hub01` / `enable_hub02` (default `true`) for phased pipeline deploys — one state key `prd/connectivity.tfstate`.
+
 To enable Hub03 later (any region): uncomment `module "hub_spare"` and `output "hub03_id"` in this stack. The module is region-agnostic (`location`).
 
 **int** remains two-hub (`10.170.245/246`) — see `docs/address-plan-hubs.md`.

@@ -1,9 +1,19 @@
-# Convenience: int connectivity with hubSelection. Prefer tf-Hub-Deployment.yml.
-# Requires AzDo vars: tf.backend.resourceGroup, tf.backend.storageAccount
+# Connectivity hubs (Hub01 secured / Hub02 unsecured + VPN). One connectivity state file.
+# Requires _global (vWAN) first. hubSelection:
+#   hub01 — firewall policy + Hub01 only
+#   hub02 — add/keep Hub02 + VPN (keeps Hub01 enabled)
+#   both  — Hub01 + Hub02 in one apply (phased first-time: run hub01 then hub02)
 
 trigger: none
 
 parameters:
+  - name: envName
+    displayName: Environment
+    type: string
+    default: int
+    values:
+      - int
+      - prd
   - name: hubSelection
     displayName: Hubs to manage
     type: string
@@ -23,9 +33,15 @@ parameters:
 
 variables:
   - name: azureServiceConnection
-    value: SC-R-VDI-INT-C-01
+    ${{ if eq(parameters.envName, 'int') }}:
+      value: SC-R-VDI-INT-C-01
+    ${{ if eq(parameters.envName, 'prd') }}:
+      value: SC-P-VDI-PRD-C-01
   - name: agentPool
-    value: uks-int-vdi-mgmt-vss-01
+    ${{ if eq(parameters.envName, 'int') }}:
+      value: uks-int-vdi-mgmt-vss-01
+    ${{ if eq(parameters.envName, 'prd') }}:
+      value: uks-prd-vdi-mgmt-vss-01
   - name: tfBackendResourceGroup
     value: $(tf.backend.resourceGroup)
   - name: tfBackendStorageAccount
@@ -36,7 +52,7 @@ variables:
 stages:
   - template: templates/connectivity-stages.yml
     parameters:
-      envName: int
+      envName: ${{ parameters.envName }}
       azureServiceConnection: $(azureServiceConnection)
       agentPool: $(agentPool)
       tfBackendResourceGroup: $(tfBackendResourceGroup)
@@ -44,4 +60,4 @@ stages:
       tfBackendContainer: $(tfBackendContainer)
       action: ${{ parameters.action }}
       hubSelection: ${{ parameters.hubSelection }}
-      workingDirectory: environments/int/connectivity
+      workingDirectory: environments/${{ parameters.envName }}/connectivity

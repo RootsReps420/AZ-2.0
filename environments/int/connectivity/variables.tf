@@ -69,3 +69,17 @@ variable "expressroute_circuit_peering_id" {
   type        = string
   default     = null
 }
+
+# Pipeline / phased deploy: hubSelection maps to these. Defaults true = deploy both
+# (current behaviour). Narrowing a flag from true→false plans destroy of that hub.
+variable "enable_hub01" {
+  description = "Deploy Hub01 secured (firewall policy + AZFW + Routing Intent + ER GW)."
+  type        = bool
+  default     = true
+}
+
+variable "enable_hub02" {
+  description = "Deploy Hub02 unsecured (virtual hub + VPN gateway)."
+  type        = bool
+  default     = true
+}

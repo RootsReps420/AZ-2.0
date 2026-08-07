@@ -1,0 +1,137 @@
+# Expands connectivity stages from hubSelection + action (same state key).
+# Uses enable_hub01 / enable_hub02 — not terraform -target.
+#
+# hubSelection:
+#   hub01 → one stage (enable_hub01=true, enable_hub02=false)
+#   hub02 → one stage (both true — keeps Hub01 if already present)
+#   both  → one stage (both true) with a scope banner listing Hub01 then Hub02
+#           Phased first-time: run hub01, then hub02 (or both). Do NOT use a
+#           Hub01-only intermediate stage inside "both" — that would destroy Hub02 on re-run.
+# action=destroy → full connectivity destroy (ignores hubSelection)
+
+parameters:
+  - name: envName
+    type: string
+  - name: azureServiceConnection
+    type: string
+  - name: agentPool
+    type: string
+  - name: tfBackendResourceGroup
+    type: string
+  - name: tfBackendStorageAccount
+    type: string
+  - name: tfBackendContainer
+    type: string
+    default: tfstate
+  - name: action
+    type: string
+    default: plan
+  - name: hubSelection
+    type: string
+    default: both
+  - name: workingDirectory
+    type: string
+    default: ""
+  - name: seedIgmfTfvars
+    type: boolean
+    default: false
+
+stages:
+  - ${{ if eq(parameters.action, 'destroy') }}:
+    - stage: destroy_connectivity
+      displayName: Destroy ${{ parameters.envName }}/connectivity (full stack)
+      jobs:
+        - template: terraform-stack.yml
+          parameters:
+            envName: ${{ parameters.envName }}
+            stackName: connectivity
+            azureServiceConnection: ${{ parameters.azureServiceConnection }}
+            agentPool: ${{ parameters.agentPool }}
+            tfBackendResourceGroup: ${{ parameters.tfBackendResourceGroup }}
+            tfBackendStorageAccount: ${{ parameters.tfBackendStorageAccount }}
+            tfBackendContainer: ${{ parameters.tfBackendContainer }}
+            action: destroy
+            workingDirectory: ${{ parameters.workingDirectory }}
+            seedIgmfTfvars: ${{ parameters.seedIgmfTfvars }}
+            stageLabel: destroy ${{ parameters.envName }} — connectivity (full stack)
+            scopeManifest: |
+              - Connectivity resource group
+              - Hub01 secured + firewall policy (if present)
+              - Hub02 unsecured + VPN gateway (if present)
+
+  - ${{ if and(ne(parameters.action, 'destroy'), eq(parameters.hubSelection, 'hub01')) }}:
+    - stage: hub01
+      displayName: ${{ parameters.action }} ${{ parameters.envName }} — Hub01 secured + firewall policy
+      jobs:
+        - template: terraform-stack.yml
+          parameters:
+            envName: ${{ parameters.envName }}
+            stackName: connectivity
+            azureServiceConnection: ${{ parameters.azureServiceConnection }}
+            agentPool: ${{ parameters.agentPool }}
+            tfBackendResourceGroup: ${{ parameters.tfBackendResourceGroup }}
+            tfBackendStorageAccount: ${{ parameters.tfBackendStorageAccount }}
+            tfBackendContainer: ${{ parameters.tfBackendContainer }}
+            action: ${{ parameters.action }}
+            workingDirectory: ${{ parameters.workingDirectory }}
+            seedIgmfTfvars: ${{ parameters.seedIgmfTfvars }}
+            hubSelection: hub01
+            enableHub01: "true"
+            enableHub02: "false"
+            stageLabel: ${{ parameters.action }} ${{ parameters.envName }} — Hub01 secured + firewall policy
+            scopeManifest: |
+              - Connectivity resource group
+              - [hub01] Firewall policy (baseline stub)
+              - [hub01] Hub01 secured (AZFW + Routing Intent + ER GW)
+              - [skip] Hub02 + VPN (enable_hub02=false — will destroy Hub02 if it already exists)
+
+  - ${{ if and(ne(parameters.action, 'destroy'), eq(parameters.hubSelection, 'hub02')) }}:
+    - stage: hub02
+      displayName: ${{ parameters.action }} ${{ parameters.envName }} — Hub02 unsecured + VPN gateway
+      jobs:
+        - template: terraform-stack.yml
+          parameters:
+            envName: ${{ parameters.envName }}
+            stackName: connectivity
+            azureServiceConnection: ${{ parameters.azureServiceConnection }}
+            agentPool: ${{ parameters.agentPool }}
+            tfBackendResourceGroup: ${{ parameters.tfBackendResourceGroup }}
+            tfBackendStorageAccount: ${{ parameters.tfBackendStorageAccount }}
+            tfBackendContainer: ${{ parameters.tfBackendContainer }}
+            action: ${{ parameters.action }}
+            workingDirectory: ${{ parameters.workingDirectory }}
+            seedIgmfTfvars: ${{ parameters.seedIgmfTfvars }}
+            hubSelection: hub02
+            enableHub01: "true"
+            enableHub02: "true"
+            stageLabel: ${{ parameters.action }} ${{ parameters.envName }} — Hub02 unsecured + VPN gateway
+            scopeManifest: |
+              - Connectivity resource group
+              - [keep] Hub01 secured + firewall policy (enable_hub01=true)
+              - [hub02] Hub02 unsecured (virtual hub + VPN gateway)
+
+  - ${{ if and(ne(parameters.action, 'destroy'), eq(parameters.hubSelection, 'both')) }}:
+    - stage: hubs_both
+      displayName: ${{ parameters.action }} ${{ parameters.envName }} — Hub01 + Hub02 (connectivity)
+      jobs:
+        - template: terraform-stack.yml
+          parameters:
+            envName: ${{ parameters.envName }}
+            stackName: connectivity
+            azureServiceConnection: ${{ parameters.azureServiceConnection }}
+            agentPool: ${{ parameters.agentPool }}
+            tfBackendResourceGroup: ${{ parameters.tfBackendResourceGroup }}
+            tfBackendStorageAccount: ${{ parameters.tfBackendStorageAccount }}
+            tfBackendContainer: ${{ parameters.tfBackendContainer }}
+            action: ${{ parameters.action }}
+            workingDirectory: ${{ parameters.workingDirectory }}
+            seedIgmfTfvars: ${{ parameters.seedIgmfTfvars }}
+            hubSelection: both
+            enableHub01: "true"
+            enableHub02: "true"
+            stageLabel: ${{ parameters.action }} ${{ parameters.envName }} — Hub01 + Hub02
+            scopeManifest: |
+              - Connectivity resource group
+              - [hub01] Firewall policy (baseline stub)
+              - [hub01] Hub01 secured (AZFW + Routing Intent + ER GW)
+              - [hub02] Hub02 unsecured (virtual hub + VPN gateway)

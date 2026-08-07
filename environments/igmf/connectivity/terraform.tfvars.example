@@ -19,4 +19,8 @@ hub02_address_prefix = "10.170.246.0/24"
 
 dns_servers = ["168.63.129.16"] # Azure DNS — do NOT use bank 10.19.*
 
+# Phased hub deploy (defaults true). Pipeline -var overrides these when hubSelection is set.
+# enable_hub01 = true
+# enable_hub02 = true
+
 # expressroute_circuit_peering_id — leave unset for IGMF

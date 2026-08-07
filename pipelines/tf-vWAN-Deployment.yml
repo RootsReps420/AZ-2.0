@@ -1,0 +1,59 @@
+# Shared Virtual WAN (_global). One stack per run.
+# Apply before Hub / mgmt / labs / avd.
+
+trigger: none
+
+parameters:
+  - name: envName
+    displayName: Environment
+    type: string
+    default: int
+    values:
+      - int
+      - prd
+  - name: action
+    displayName: Action
+    type: string
+    default: plan
+    values:
+      - plan
+      - apply
+      - destroy
+
+variables:
+  - name: azureServiceConnection
+    ${{ if eq(parameters.envName, 'int') }}:
+      value: SC-R-VDI-INT-C-01
+    ${{ if eq(parameters.envName, 'prd') }}:
+      value: SC-P-VDI-PRD-C-01
+  - name: agentPool
+    ${{ if eq(parameters.envName, 'int') }}:
+      value: uks-int-vdi-mgmt-vss-01
+    ${{ if eq(parameters.envName, 'prd') }}:
+      value: uks-prd-vdi-mgmt-vss-01
+  - name: tfBackendResourceGroup
+    value: $(tf.backend.resourceGroup)
+  - name: tfBackendStorageAccount
+    value: $(tf.backend.storageAccount)
+  - name: tfBackendContainer
+    value: tfstate
+
+stages:
+  - stage: vwan
+    displayName: ${{ parameters.action }} ${{ parameters.envName }} — Virtual WAN (_global)
+    jobs:
+      - template: templates/terraform-stack.yml
+        parameters:
+          envName: ${{ parameters.envName }}
+          stackName: _global
+          azureServiceConnection: $(azureServiceConnection)
+          agentPool: $(agentPool)
+          tfBackendResourceGroup: $(tfBackendResourceGroup)
+          tfBackendStorageAccount: $(tfBackendStorageAccount)
+          tfBackendContainer: $(tfBackendContainer)
+          action: ${{ parameters.action }}
+          workingDirectory: environments/_global
+          stageLabel: ${{ parameters.action }} ${{ parameters.envName }} — Virtual WAN
+          scopeManifest: |
+            - Shared Virtual WAN resource group
+            - Virtual WAN (vdi platform)

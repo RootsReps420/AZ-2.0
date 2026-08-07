@@ -3,7 +3,8 @@
 #   hub01 — firewall policy + Hub01 only
 #   hub02 — add/keep Hub02 + VPN (keeps Hub01 enabled)
 #   both  — Hub01 + Hub02 in one apply (phased first-time: run hub01 then hub02)
-# envName=igmf seeds terraform.tfvars from the connectivity *.tfvars.example.
+# envName=igmf seeds terraform.tfvars from the connectivity *.tfvars.example (uksouth only).
+# location=uksouth → environments/<env>/connectivity; else environments/<env>/<location>/connectivity
 
 trigger: none
 
@@ -16,6 +17,14 @@ parameters:
       - int
       - prd
       - igmf
+  - name: location
+    displayName: Location
+    type: string
+    default: uksouth
+    values:
+      - uksouth
+      - italynorth
+      - spaincentral
   - name: hubSelection
     displayName: Hubs to manage
     type: string
@@ -37,11 +46,13 @@ variables:
   - template: templates/env-context.yml
     parameters:
       envName: ${{ parameters.envName }}
+      location: ${{ parameters.location }}
 
 stages:
   - template: templates/connectivity-stages.yml
     parameters:
       envName: ${{ parameters.envName }}
+      location: ${{ parameters.location }}
       azureServiceConnection: $(azureServiceConnection)
       agentPool: $(agentPool)
       tfBackendResourceGroup: $(tfBackendResourceGroup)
@@ -49,5 +60,4 @@ stages:
       tfBackendContainer: $(tfBackendContainer)
       action: ${{ parameters.action }}
       hubSelection: ${{ parameters.hubSelection }}
-      workingDirectory: environments/${{ parameters.envName }}/connectivity
-      seedIgmfTfvars: ${{ eq(parameters.envName, 'igmf') }}
+      seedIgmfTfvars: ${{ and(eq(parameters.envName, 'igmf'), eq(parameters.location, 'uksouth')) }}

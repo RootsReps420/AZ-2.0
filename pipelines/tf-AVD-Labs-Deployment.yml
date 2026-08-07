@@ -1,5 +1,5 @@
 # AVD lab spokes + storage (PERS / MSH / PRIV, FSLogix, lab KVs). Requires connectivity + mgmt.
-# envName=igmf seeds terraform.tfvars from the labs *.tfvars.example.
+# envName=igmf seeds terraform.tfvars from the labs *.tfvars.example (uksouth only).
 
 trigger: none
 
@@ -12,6 +12,14 @@ parameters:
       - int
       - prd
       - igmf
+  - name: location
+    displayName: Location
+    type: string
+    default: uksouth
+    values:
+      - uksouth
+      - italynorth
+      - spaincentral
   - name: action
     displayName: Action
     type: string
@@ -25,14 +33,16 @@ variables:
   - template: templates/env-context.yml
     parameters:
       envName: ${{ parameters.envName }}
+      location: ${{ parameters.location }}
 
 stages:
   - stage: labs
-    displayName: ${{ parameters.action }} ${{ parameters.envName }} — AVD labs (spokes / storage)
+    displayName: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — AVD labs (spokes / storage)
     jobs:
       - template: templates/terraform-stack.yml
         parameters:
           envName: ${{ parameters.envName }}
+          location: ${{ parameters.location }}
           stackName: labs
           azureServiceConnection: $(azureServiceConnection)
           agentPool: $(agentPool)
@@ -40,8 +50,8 @@ stages:
           tfBackendStorageAccount: $(tfBackendStorageAccount)
           tfBackendContainer: $(tfBackendContainer)
           action: ${{ parameters.action }}
-          seedIgmfTfvars: ${{ eq(parameters.envName, 'igmf') }}
-          stageLabel: ${{ parameters.action }} ${{ parameters.envName }} — AVD labs
+          seedIgmfTfvars: ${{ and(eq(parameters.envName, 'igmf'), eq(parameters.location, 'uksouth')) }}
+          stageLabel: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — AVD labs
           scopeManifest: |
             - PERS / MULT (/ PRIV) lab resource groups
             - PERS spokes → Hub01

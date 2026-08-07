@@ -1,7 +1,7 @@
 # Parameterised Terraform release — one stack per run (catch-all).
 # Prefer named pipelines (tf-Hub-Deployment.yml, etc.) for day-to-day.
 # Deploy order: _global → connectivity → mgmt → labs → avd
-# envName=igmf seeds *.tfvars.example → terraform.tfvars (bank envs do not).
+# envName=igmf seeds *.tfvars.example → terraform.tfvars (uksouth only; bank envs do not).
 
 trigger: none
 
@@ -14,6 +14,14 @@ parameters:
       - int
       - prd
       - igmf
+  - name: location
+    displayName: Location
+    type: string
+    default: uksouth
+    values:
+      - uksouth
+      - italynorth
+      - spaincentral
   - name: stackName
     displayName: Stack
     type: string
@@ -45,17 +53,14 @@ variables:
   - template: templates/env-context.yml
     parameters:
       envName: ${{ parameters.envName }}
-  - name: stackWorkingDirectory
-    ${{ if eq(parameters.stackName, '_global') }}:
-      value: environments/_global
-    ${{ else }}:
-      value: environments/${{ parameters.envName }}/${{ parameters.stackName }}
+      location: ${{ parameters.location }}
 
 stages:
   - ${{ if eq(parameters.stackName, 'connectivity') }}:
     - template: templates/connectivity-stages.yml
       parameters:
         envName: ${{ parameters.envName }}
+        location: ${{ parameters.location }}
         azureServiceConnection: $(azureServiceConnection)
         agentPool: $(agentPool)
         tfBackendResourceGroup: $(tfBackendResourceGroup)
@@ -63,16 +68,16 @@ stages:
         tfBackendContainer: $(tfBackendContainer)
         action: ${{ parameters.action }}
         hubSelection: ${{ parameters.hubSelection }}
-        workingDirectory: $(stackWorkingDirectory)
-        seedIgmfTfvars: ${{ eq(parameters.envName, 'igmf') }}
+        seedIgmfTfvars: ${{ and(eq(parameters.envName, 'igmf'), eq(parameters.location, 'uksouth')) }}
 
   - ${{ if eq(parameters.stackName, '_global') }}:
     - stage: terraform
-      displayName: ${{ parameters.action }} ${{ parameters.envName }}/_global — Virtual WAN
+      displayName: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }}/_global — Virtual WAN
       jobs:
         - template: templates/terraform-stack.yml
           parameters:
             envName: ${{ parameters.envName }}
+            location: ${{ parameters.location }}
             stackName: _global
             azureServiceConnection: $(azureServiceConnection)
             agentPool: $(agentPool)
@@ -81,19 +86,20 @@ stages:
             tfBackendContainer: $(tfBackendContainer)
             action: ${{ parameters.action }}
             workingDirectory: environments/_global
-            seedIgmfTfvars: ${{ eq(parameters.envName, 'igmf') }}
-            stageLabel: ${{ parameters.action }} ${{ parameters.envName }} — Virtual WAN
+            seedIgmfTfvars: ${{ and(eq(parameters.envName, 'igmf'), eq(parameters.location, 'uksouth')) }}
+            stageLabel: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — Virtual WAN
             scopeManifest: |
               - Shared Virtual WAN resource group
               - Virtual WAN (vdi platform)
 
   - ${{ if eq(parameters.stackName, 'mgmt') }}:
     - stage: terraform
-      displayName: ${{ parameters.action }} ${{ parameters.envName }}/mgmt
+      displayName: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }}/mgmt
       jobs:
         - template: templates/terraform-stack.yml
           parameters:
             envName: ${{ parameters.envName }}
+            location: ${{ parameters.location }}
             stackName: mgmt
             azureServiceConnection: $(azureServiceConnection)
             agentPool: $(agentPool)
@@ -101,9 +107,8 @@ stages:
             tfBackendStorageAccount: $(tfBackendStorageAccount)
             tfBackendContainer: $(tfBackendContainer)
             action: ${{ parameters.action }}
-            workingDirectory: $(stackWorkingDirectory)
-            seedIgmfTfvars: ${{ eq(parameters.envName, 'igmf') }}
-            stageLabel: ${{ parameters.action }} ${{ parameters.envName }} — management
+            seedIgmfTfvars: ${{ and(eq(parameters.envName, 'igmf'), eq(parameters.location, 'uksouth')) }}
+            stageLabel: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — management
             scopeManifest: |
               - Management resource group
               - Log Analytics workspace + DCE / Insights DCR
@@ -112,11 +117,12 @@ stages:
 
   - ${{ if eq(parameters.stackName, 'labs') }}:
     - stage: terraform
-      displayName: ${{ parameters.action }} ${{ parameters.envName }}/labs
+      displayName: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }}/labs
       jobs:
         - template: templates/terraform-stack.yml
           parameters:
             envName: ${{ parameters.envName }}
+            location: ${{ parameters.location }}
             stackName: labs
             azureServiceConnection: $(azureServiceConnection)
             agentPool: $(agentPool)
@@ -124,20 +130,20 @@ stages:
             tfBackendStorageAccount: $(tfBackendStorageAccount)
             tfBackendContainer: $(tfBackendContainer)
             action: ${{ parameters.action }}
-            workingDirectory: $(stackWorkingDirectory)
-            seedIgmfTfvars: ${{ eq(parameters.envName, 'igmf') }}
-            stageLabel: ${{ parameters.action }} ${{ parameters.envName }} — AVD labs
+            seedIgmfTfvars: ${{ and(eq(parameters.envName, 'igmf'), eq(parameters.location, 'uksouth')) }}
+            stageLabel: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — AVD labs
             scopeManifest: |
               - PERS / MSH / PRIV lab spokes + hub connections
               - Optional FSLogix / lab Key Vaults / PERS blob (tfvars flags)
 
   - ${{ if eq(parameters.stackName, 'avd') }}:
     - stage: terraform
-      displayName: ${{ parameters.action }} ${{ parameters.envName }}/avd
+      displayName: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }}/avd
       jobs:
         - template: templates/terraform-stack.yml
           parameters:
             envName: ${{ parameters.envName }}
+            location: ${{ parameters.location }}
             stackName: avd
             azureServiceConnection: $(azureServiceConnection)
             agentPool: $(agentPool)
@@ -145,9 +151,8 @@ stages:
             tfBackendStorageAccount: $(tfBackendStorageAccount)
             tfBackendContainer: $(tfBackendContainer)
             action: ${{ parameters.action }}
-            workingDirectory: $(stackWorkingDirectory)
-            seedIgmfTfvars: ${{ eq(parameters.envName, 'igmf') }}
-            stageLabel: ${{ parameters.action }} ${{ parameters.envName }} — AVD host pools
+            seedIgmfTfvars: ${{ and(eq(parameters.envName, 'igmf'), eq(parameters.location, 'uksouth')) }}
+            stageLabel: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — AVD host pools
             scopeManifest: |
               - Host pools / workspaces / scaling plans
               - Gallery + image definitions

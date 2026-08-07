@@ -1,6 +1,6 @@
 # AVD host pools, workspaces, scaling plans, gallery definitions, DCRs.
 # Requires labs (+ connectivity / mgmt). Session-host VMs stay PowerShell.
-# envName=igmf seeds terraform.tfvars from the avd *.tfvars.example.
+# envName=igmf seeds terraform.tfvars from the avd *.tfvars.example (uksouth only).
 
 trigger: none
 
@@ -13,6 +13,14 @@ parameters:
       - int
       - prd
       - igmf
+  - name: location
+    displayName: Location
+    type: string
+    default: uksouth
+    values:
+      - uksouth
+      - italynorth
+      - spaincentral
   - name: action
     displayName: Action
     type: string
@@ -26,14 +34,16 @@ variables:
   - template: templates/env-context.yml
     parameters:
       envName: ${{ parameters.envName }}
+      location: ${{ parameters.location }}
 
 stages:
   - stage: avd
-    displayName: ${{ parameters.action }} ${{ parameters.envName }} — AVD host pools / gallery
+    displayName: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — AVD host pools / gallery
     jobs:
       - template: templates/terraform-stack.yml
         parameters:
           envName: ${{ parameters.envName }}
+          location: ${{ parameters.location }}
           stackName: avd
           azureServiceConnection: $(azureServiceConnection)
           agentPool: $(agentPool)
@@ -41,8 +51,8 @@ stages:
           tfBackendStorageAccount: $(tfBackendStorageAccount)
           tfBackendContainer: $(tfBackendContainer)
           action: ${{ parameters.action }}
-          seedIgmfTfvars: ${{ eq(parameters.envName, 'igmf') }}
-          stageLabel: ${{ parameters.action }} ${{ parameters.envName }} — AVD host pools
+          seedIgmfTfvars: ${{ and(eq(parameters.envName, 'igmf'), eq(parameters.location, 'uksouth')) }}
+          stageLabel: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — AVD host pools
           scopeManifest: |
             - AVD resource group(s)
             - MSH host pools + workspace + scaling (+ decom siblings)

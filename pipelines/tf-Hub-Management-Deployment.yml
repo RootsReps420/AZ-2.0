@@ -1,5 +1,5 @@
 # Management stack: LAW, mgmt spoke, alerts. Requires connectivity (Hub01) first.
-# envName=igmf seeds terraform.tfvars from the mgmt *.tfvars.example.
+# envName=igmf seeds terraform.tfvars from the mgmt *.tfvars.example (uksouth only).
 
 trigger: none
 
@@ -12,6 +12,14 @@ parameters:
       - int
       - prd
       - igmf
+  - name: location
+    displayName: Location
+    type: string
+    default: uksouth
+    values:
+      - uksouth
+      - italynorth
+      - spaincentral
   - name: action
     displayName: Action
     type: string
@@ -25,14 +33,16 @@ variables:
   - template: templates/env-context.yml
     parameters:
       envName: ${{ parameters.envName }}
+      location: ${{ parameters.location }}
 
 stages:
   - stage: mgmt
-    displayName: ${{ parameters.action }} ${{ parameters.envName }} — Hub management (LAW / spoke / alerts)
+    displayName: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — Hub management (LAW / spoke / alerts)
     jobs:
       - template: templates/terraform-stack.yml
         parameters:
           envName: ${{ parameters.envName }}
+          location: ${{ parameters.location }}
           stackName: mgmt
           azureServiceConnection: $(azureServiceConnection)
           agentPool: $(agentPool)
@@ -40,8 +50,8 @@ stages:
           tfBackendStorageAccount: $(tfBackendStorageAccount)
           tfBackendContainer: $(tfBackendContainer)
           action: ${{ parameters.action }}
-          seedIgmfTfvars: ${{ eq(parameters.envName, 'igmf') }}
-          stageLabel: ${{ parameters.action }} ${{ parameters.envName }} — management
+          seedIgmfTfvars: ${{ and(eq(parameters.envName, 'igmf'), eq(parameters.location, 'uksouth')) }}
+          stageLabel: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — management
           scopeManifest: |
             - Management resource group
             - Log Analytics workspace + DCE / Insights DCR

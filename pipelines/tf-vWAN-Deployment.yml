@@ -1,6 +1,7 @@
 # Shared Virtual WAN (_global). One stack per run.
 # Apply before Hub / mgmt / labs / avd.
-# envName=igmf seeds terraform.tfvars from environments/igmf/global.tfvars.example.
+# envName=igmf seeds terraform.tfvars from environments/igmf/global.tfvars.example (uksouth only).
+# location selects Azure region; _global workdir stays environments/_global for all locations.
 
 trigger: none
 
@@ -13,6 +14,14 @@ parameters:
       - int
       - prd
       - igmf
+  - name: location
+    displayName: Location
+    type: string
+    default: uksouth
+    values:
+      - uksouth
+      - italynorth
+      - spaincentral
   - name: action
     displayName: Action
     type: string
@@ -26,14 +35,16 @@ variables:
   - template: templates/env-context.yml
     parameters:
       envName: ${{ parameters.envName }}
+      location: ${{ parameters.location }}
 
 stages:
   - stage: vwan
-    displayName: ${{ parameters.action }} ${{ parameters.envName }} — Virtual WAN (_global)
+    displayName: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — Virtual WAN (_global)
     jobs:
       - template: templates/terraform-stack.yml
         parameters:
           envName: ${{ parameters.envName }}
+          location: ${{ parameters.location }}
           stackName: _global
           azureServiceConnection: $(azureServiceConnection)
           agentPool: $(agentPool)
@@ -42,8 +53,8 @@ stages:
           tfBackendContainer: $(tfBackendContainer)
           action: ${{ parameters.action }}
           workingDirectory: environments/_global
-          seedIgmfTfvars: ${{ eq(parameters.envName, 'igmf') }}
-          stageLabel: ${{ parameters.action }} ${{ parameters.envName }} — Virtual WAN
+          seedIgmfTfvars: ${{ and(eq(parameters.envName, 'igmf'), eq(parameters.location, 'uksouth')) }}
+          stageLabel: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — Virtual WAN
           scopeManifest: |
             - Shared Virtual WAN resource group
             - Virtual WAN (vdi platform)

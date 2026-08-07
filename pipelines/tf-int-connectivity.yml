@@ -1,9 +1,18 @@
 # Convenience: int connectivity with hubSelection. Prefer tf-Hub-Deployment.yml.
-# Requires AzDo vars: tf.backend.resourceGroup, tf.backend.storageAccount
+# Requires AzDo vars: tf.backend.resourceGroup, tf.backend.storageAccount (uksouth).
+# location=italynorth|spaincentral uses placeholder SC from env-context.
 
 trigger: none
 
 parameters:
+  - name: location
+    displayName: Location
+    type: string
+    default: uksouth
+    values:
+      - uksouth
+      - italynorth
+      - spaincentral
   - name: hubSelection
     displayName: Hubs to manage
     type: string
@@ -22,21 +31,16 @@ parameters:
       - destroy
 
 variables:
-  - name: azureServiceConnection
-    value: SC-R-VDI-INT-C-01
-  - name: agentPool
-    value: uks-int-vdi-mgmt-vss-01
-  - name: tfBackendResourceGroup
-    value: $(tf.backend.resourceGroup)
-  - name: tfBackendStorageAccount
-    value: $(tf.backend.storageAccount)
-  - name: tfBackendContainer
-    value: tfstate
+  - template: templates/env-context.yml
+    parameters:
+      envName: int
+      location: ${{ parameters.location }}
 
 stages:
   - template: templates/connectivity-stages.yml
     parameters:
       envName: int
+      location: ${{ parameters.location }}
       azureServiceConnection: $(azureServiceConnection)
       agentPool: $(agentPool)
       tfBackendResourceGroup: $(tfBackendResourceGroup)
@@ -44,4 +48,3 @@ stages:
       tfBackendContainer: $(tfBackendContainer)
       action: ${{ parameters.action }}
       hubSelection: ${{ parameters.hubSelection }}
-      workingDirectory: environments/int/connectivity

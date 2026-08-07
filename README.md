@@ -3,7 +3,7 @@
 **Audience:** engineers new to this monorepo.  
 **Status:** Reflects code on `main` after legacy-to-TF parity (C01-C20 + Wave D + labCorePriv). **Hub03** = spare CIDR + `hub-spare` module in code — **not deployed** until uncommented.  
 **Environments in scope:** `int` (DT / dev test), `prd` (production), and sandbox `igmf` (not bank cutover).  
-**Region:** `uksouth` only (as-built). Multi-region (Italy North / Spain Central) is LLD future — not in these stacks yet.
+**Region:** `uksouth` is live. Pipeline `location` also accepts `italynorth` / `spaincentral` (placeholder labs — stub workdirs + TODO service connections; not deployable yet).
 
 This is the practical LLD for **what Terraform actually deploys today**. Companion notes:
 
@@ -226,13 +226,14 @@ environments/
   int/{connectivity,mgmt,labs,avd}/
   prd/{connectivity,mgmt,labs,avd}/
   igmf/{connectivity,mgmt,labs,avd}/   # sandbox — not bank cutover
+  {int,prd,igmf}/{italynorth,spaincentral}/{…}/  # regional stubs (README only)
 pipelines/                 # AzDo Terraform init/plan/apply
 modules/                   # Reusable bricks — see Module catalogue
 scripts/                   # Local tooling only (not AzDo)
 legacy/                    # Local reference clones only (gitignored / untracked)
 ```
 
-Ignore for cutover: `environments/uksouth/{dev,prod}`, `environments/prod/` (naming stub), [`modules/core/demo-module`](modules/core/demo-module) / [`modules/core/scaffold-smoke`](modules/core/scaffold-smoke). Live folder/env segment is **`prd`**, not `prod`.
+Ignore for cutover: `environments/uksouth/{dev,prod}`, `environments/prod/` (naming stub), [`modules/core/demo-module`](modules/core/demo-module) / [`modules/core/scaffold-smoke`](modules/core/scaffold-smoke). Live folder/env segment is **`prd`**, not `prod`. Italy/Spain folders are pipeline placeholders only.
 
 ---
 
@@ -240,11 +241,13 @@ Ignore for cutover: `environments/uksouth/{dev,prod}`, `environments/prod/` (nam
 
 Prefer the **named** pipelines below. [`pipelines/tf-release.yml`](pipelines/tf-release.yml) is a single-stack catch-all — **not** an orchestrator and **not** a prerequisite. It does not run `_global` → `avd` in one go; you still queue one stack at a time.
 
-Shared env → service connection / agent / backend mapping lives in [`pipelines/templates/env-context.yml`](pipelines/templates/env-context.yml) (int / prd / igmf). Hub selection behaviour (`hub01` / `hub02` / `both` / `destroy`) is documented in [`pipelines/README.md`](pipelines/README.md).
+Shared env + **location** → service connection / agent / backend mapping lives in [`pipelines/templates/env-context.yml`](pipelines/templates/env-context.yml). Hub selection and location path/state rules: [`pipelines/README.md`](pipelines/README.md).
+
+**`location`:** `uksouth` (default, live) \| `italynorth` \| `spaincentral` (placeholders). Non-uksouth workdirs are `environments/<env>/<location>/<stack>`; state keys `{env}/{location}/{stack}.tfstate`; SC is `TODO-<env>-<location>-SC` until regional labs exist.
 
 ### Mapping table
 
-| Pipeline | Stack | Working directory | Deploys |
+| Pipeline | Stack | Working directory (uksouth) | Deploys |
 |---|---|---|---|
 | [`tf-vWAN-Deployment.yml`](pipelines/tf-vWAN-Deployment.yml) | `_global` | `environments/_global` | Virtual WAN |
 | [`tf-Hub-Deployment.yml`](pipelines/tf-Hub-Deployment.yml) | connectivity | `environments/<env>/connectivity` | FWP + Hub01 / Hub02 |
@@ -297,14 +300,15 @@ flowchart LR
 
 ### How a release run works
 
-1. Queue a named pipeline (e.g. `tf-Hub-Deployment.yml` with `envName=int` or `igmf`, `hubSelection=hub01`, `action=plan`) or use `tf-release.yml` with the matching `stackName`.
-2. AzDo picks the env’s **service connection** and **agent pool** via `env-context.yml`:
-   - int → `SC-R-VDI-INT-C-01` on pool `uks-int-vdi-mgmt-vss-01`
-   - prd → `SC-P-VDI-PRD-C-01` on pool `uks-prd-vdi-mgmt-vss-01`
-   - igmf → `SC-IGMF-VDI-TF-01` on hosted `Azure Pipelines` (+ variable group `tf-backend-igmf`; **seeds** tfvars from examples)
-3. Job logs a **deployment scope banner** (what will be managed), then working directory = `environments/_global` or `environments/<env>/<stack>`.
-4. State key = `{env}/{stack}.tfstate` in the configured storage container (backend RG/SA from AzDo variable group `tf.backend.*`).
-5. Connectivity uses `enable_hub01` / `enable_hub02` (one state file). Phased first deploy: `hub01` then `hub02`. `both` is one apply with both hubs. Destroy tears down the whole connectivity stack. Details: [`pipelines/README.md`](pipelines/README.md).
+1. Queue a named pipeline (e.g. `tf-Hub-Deployment.yml` with `envName=int` or `igmf`, `location=uksouth`, `hubSelection=hub01`, `action=plan`) or use `tf-release.yml` with the matching `stackName`.
+2. AzDo picks the env + location **service connection** and **agent pool** via `env-context.yml`:
+   - uksouth int → `SC-R-VDI-INT-C-01` on pool `uks-int-vdi-mgmt-vss-01`
+   - uksouth prd → `SC-P-VDI-PRD-C-01` on pool `uks-prd-vdi-mgmt-vss-01`
+   - uksouth igmf → `SC-IGMF-VDI-TF-01` on hosted `Azure Pipelines` (+ variable group `tf-backend-igmf`; **seeds** tfvars from examples)
+   - italynorth / spaincentral → placeholder `TODO-<env>-<location>-SC` on hosted pool
+3. Job logs a **deployment scope banner** (env, location, stack, SC), then working directory = `environments/_global` or `environments/<env>/<stack>` (uksouth) or `environments/<env>/<location>/<stack>` (other).
+4. State key = `{env}/{stack}.tfstate` (uksouth) or `{env}/{location}/{stack}.tfstate` (other) in the configured storage container (`tf.backend.*`).
+5. Plan/apply/destroy always pass `-var=location=<slug>`. Connectivity also uses `enable_hub01` / `enable_hub02` (one state file). Phased first deploy: `hub01` then `hub02`. Details: [`pipelines/README.md`](pipelines/README.md).
 6. Order of applies across runs must still be `_global` → `connectivity` → `mgmt` → `labs` → `avd`.
 
 Reusable job template: [`pipelines/templates/terraform-stack.yml`](pipelines/templates/terraform-stack.yml) (scope banner → install TF → `init` → `validate` → `plan` → `apply` or `destroy`). Connectivity stages: [`pipelines/templates/connectivity-stages.yml`](pipelines/templates/connectivity-stages.yml).
@@ -790,11 +794,11 @@ provider "azurerm" {
 
 State keys match [`pipelines/templates/terraform-stack.yml`](pipelines/templates/terraform-stack.yml): **`{env}/{stack}.tfstate`**
 
-| Stack | Example key |
-|---|---|
-| `_global` (via `tf-release` with `envName=int`) | `int/_global.tfstate` |
-| connectivity | `int/connectivity.tfstate` / `prd/connectivity.tfstate` |
-| mgmt / labs / avd | `{env}/mgmt.tfstate`, `{env}/labs.tfstate`, `{env}/avd.tfstate` |
+| Stack | Example key (uksouth) | Example key (italynorth) |
+|---|---|---|
+| `_global` | `int/_global.tfstate` | `int/italynorth/_global.tfstate` |
+| connectivity | `int/connectivity.tfstate` | `int/italynorth/connectivity.tfstate` |
+| mgmt / labs / avd | `{env}/mgmt.tfstate` etc. | `{env}/{location}/mgmt.tfstate` etc. |
 
 Each stack’s `azure_subscription_id` is the **subscription that owns that stack’s resources**. Legacy estate is multi-subscription (hub / mgmt / avd / lab). Cutover preserves that: one provider context per root.
 
@@ -1172,8 +1176,9 @@ Offline until creds: `terraform init -backend=false` + `terraform validate` only
 | PS owns | Session hosts, token consume, AG user RBAC, Packer versions, agent VMSS, FSLogix profile ops, DCR associations |
 | First env | `int` |
 | Prod env folder | `prd` |
+| Location (pipeline) | `uksouth` live; `italynorth` / `spaincentral` placeholders |
 | Apply order | `_global` → connectivity → mgmt → labs → avd |
-| State keys | `{env}/{stack}.tfstate` (e.g. `int/connectivity.tfstate`) |
+| State keys | `{env}/{stack}.tfstate` (uksouth); `{env}/{location}/{stack}.tfstate` (other) |
 | avd providers | `azurerm` + `azapi` (personal SP schedules) + `time` (tokens) |
 | PERS/PRIV path | Spoke → Hub01 (internet security + default-to-firewall) → AZFW / Routing Intent / ER |
 | MSH path | Dual hub + UDR: internet→Hub02 VPN; RFC1918/AzureCloud→Hub01 FW |

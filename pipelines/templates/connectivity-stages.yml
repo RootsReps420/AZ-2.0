@@ -8,10 +8,14 @@
 #           Phased first-time: run hub01, then hub02 (or both). Do NOT use a
 #           Hub01-only intermediate stage inside "both" — that would destroy Hub02 on re-run.
 # action=destroy → full connectivity destroy (ignores hubSelection)
+# location → plumbed to terraform-stack (workdir / state key / -var=location)
 
 parameters:
   - name: envName
     type: string
+  - name: location
+    type: string
+    default: uksouth
   - name: azureServiceConnection
     type: string
   - name: agentPool
@@ -39,11 +43,12 @@ parameters:
 stages:
   - ${{ if eq(parameters.action, 'destroy') }}:
     - stage: destroy_connectivity
-      displayName: Destroy ${{ parameters.envName }}/connectivity (full stack)
+      displayName: Destroy ${{ parameters.envName }}/${{ parameters.location }}/connectivity (full stack)
       jobs:
         - template: terraform-stack.yml
           parameters:
             envName: ${{ parameters.envName }}
+            location: ${{ parameters.location }}
             stackName: connectivity
             azureServiceConnection: ${{ parameters.azureServiceConnection }}
             agentPool: ${{ parameters.agentPool }}
@@ -53,7 +58,7 @@ stages:
             action: destroy
             workingDirectory: ${{ parameters.workingDirectory }}
             seedIgmfTfvars: ${{ parameters.seedIgmfTfvars }}
-            stageLabel: destroy ${{ parameters.envName }} — connectivity (full stack)
+            stageLabel: destroy ${{ parameters.envName }}/${{ parameters.location }} — connectivity (full stack)
             scopeManifest: |
               - Connectivity resource group
               - Hub01 secured + firewall policy (if present)
@@ -61,11 +66,12 @@ stages:
 
   - ${{ if and(ne(parameters.action, 'destroy'), eq(parameters.hubSelection, 'hub01')) }}:
     - stage: hub01
-      displayName: ${{ parameters.action }} ${{ parameters.envName }} — Hub01 secured + firewall policy
+      displayName: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — Hub01 secured + firewall policy
       jobs:
         - template: terraform-stack.yml
           parameters:
             envName: ${{ parameters.envName }}
+            location: ${{ parameters.location }}
             stackName: connectivity
             azureServiceConnection: ${{ parameters.azureServiceConnection }}
             agentPool: ${{ parameters.agentPool }}
@@ -78,7 +84,7 @@ stages:
             hubSelection: hub01
             enableHub01: "true"
             enableHub02: "false"
-            stageLabel: ${{ parameters.action }} ${{ parameters.envName }} — Hub01 secured + firewall policy
+            stageLabel: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — Hub01 secured + firewall policy
             scopeManifest: |
               - Connectivity resource group
               - [hub01] Firewall policy (baseline stub)
@@ -87,11 +93,12 @@ stages:
 
   - ${{ if and(ne(parameters.action, 'destroy'), eq(parameters.hubSelection, 'hub02')) }}:
     - stage: hub02
-      displayName: ${{ parameters.action }} ${{ parameters.envName }} — Hub02 unsecured + VPN gateway
+      displayName: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — Hub02 unsecured + VPN gateway
       jobs:
         - template: terraform-stack.yml
           parameters:
             envName: ${{ parameters.envName }}
+            location: ${{ parameters.location }}
             stackName: connectivity
             azureServiceConnection: ${{ parameters.azureServiceConnection }}
             agentPool: ${{ parameters.agentPool }}
@@ -104,7 +111,7 @@ stages:
             hubSelection: hub02
             enableHub01: "true"
             enableHub02: "true"
-            stageLabel: ${{ parameters.action }} ${{ parameters.envName }} — Hub02 unsecured + VPN gateway
+            stageLabel: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — Hub02 unsecured + VPN gateway
             scopeManifest: |
               - Connectivity resource group
               - [keep] Hub01 secured + firewall policy (enable_hub01=true)
@@ -112,11 +119,12 @@ stages:
 
   - ${{ if and(ne(parameters.action, 'destroy'), eq(parameters.hubSelection, 'both')) }}:
     - stage: hubs_both
-      displayName: ${{ parameters.action }} ${{ parameters.envName }} — Hub01 + Hub02 (connectivity)
+      displayName: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — Hub01 + Hub02 (connectivity)
       jobs:
         - template: terraform-stack.yml
           parameters:
             envName: ${{ parameters.envName }}
+            location: ${{ parameters.location }}
             stackName: connectivity
             azureServiceConnection: ${{ parameters.azureServiceConnection }}
             agentPool: ${{ parameters.agentPool }}
@@ -129,7 +137,7 @@ stages:
             hubSelection: both
             enableHub01: "true"
             enableHub02: "true"
-            stageLabel: ${{ parameters.action }} ${{ parameters.envName }} — Hub01 + Hub02
+            stageLabel: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — Hub01 + Hub02
             scopeManifest: |
               - Connectivity resource group
               - [hub01] Firewall policy (baseline stub)

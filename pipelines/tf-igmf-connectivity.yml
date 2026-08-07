@@ -1,10 +1,18 @@
 # IGMF sandbox convenience: connectivity with hubSelection.
-# Prefer tf-igmf-release.yml (stackName=connectivity) or bank-style Hub pipeline pattern.
-# Requires AzDo variable group: tf-backend-igmf
+# Prefer tf-igmf-release.yml (stackName=connectivity) or tf-Hub-Deployment.yml with envName=igmf.
+# Requires AzDo variable group: tf-backend-igmf (uksouth only).
 
 trigger: none
 
 parameters:
+  - name: location
+    displayName: Location
+    type: string
+    default: uksouth
+    values:
+      - uksouth
+      - italynorth
+      - spaincentral
   - name: hubSelection
     displayName: Hubs to manage
     type: string
@@ -23,22 +31,16 @@ parameters:
       - destroy
 
 variables:
-  - group: tf-backend-igmf
-  - name: azureServiceConnection
-    value: SC-IGMF-VDI-TF-01
-  - name: agentPool
-    value: Azure Pipelines
-  - name: tfBackendResourceGroup
-    value: $(tf.backend.resourceGroup)
-  - name: tfBackendStorageAccount
-    value: $(tf.backend.storageAccount)
-  - name: tfBackendContainer
-    value: tfstate
+  - template: templates/env-context.yml
+    parameters:
+      envName: igmf
+      location: ${{ parameters.location }}
 
 stages:
   - template: templates/connectivity-stages.yml
     parameters:
       envName: igmf
+      location: ${{ parameters.location }}
       azureServiceConnection: $(azureServiceConnection)
       agentPool: $(agentPool)
       tfBackendResourceGroup: $(tfBackendResourceGroup)
@@ -46,5 +48,4 @@ stages:
       tfBackendContainer: $(tfBackendContainer)
       action: ${{ parameters.action }}
       hubSelection: ${{ parameters.hubSelection }}
-      workingDirectory: environments/igmf/connectivity
-      seedIgmfTfvars: true
+      seedIgmfTfvars: ${{ eq(parameters.location, 'uksouth') }}

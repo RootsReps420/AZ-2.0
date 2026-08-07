@@ -7,7 +7,7 @@ Keep the same AzDo SPNs, service connections, and private agents. Do **not** rew
 
 ## Apply order
 
-1. `_global` — shared Virtual WAN  
+1. `vwan` — shared Virtual WAN  
 2. `connectivity` — Hub01 and/or Hub02 + baseline FWP (Hub03 spare in code only — not deployed)  
 3. `mgmt` — LAW + mgmt spoke + optional RBAC  
 4. `labs` — PERS/MSH spokes + FSLogix storage  
@@ -27,10 +27,12 @@ All entry pipelines take `location` alongside `envName`:
 
 | `location` | Working directory | State key | Identity |
 |---|---|---|---|
-| `uksouth` | `environments/<env>/<stack>` (`_global` → `environments/_global`) | `{env}/{stack}.tfstate` | Live SC / agents from [`templates/env-context.yml`](templates/env-context.yml) |
+| `uksouth` | `environments/<env>/<stack>` (`vwan` → `environments/vwan`) | `{env}/{stack}.tfstate` | Live SC / agents from [`templates/env-context.yml`](templates/env-context.yml) |
 | `italynorth` / `spaincentral` | `environments/<env>/<location>/<stack>` | `{env}/{location}/{stack}.tfstate` | Placeholder SC `TODO-<env>-<location>-SC`, hosted `Azure Pipelines` |
 
-`_global` workdir is always `environments/_global` (shared WAN). Non-uksouth still gets a location-scoped state key and `-var=location=…`.
+`vwan` workdir is always `environments/vwan` (shared WAN). Non-uksouth still gets a location-scoped state key and `-var=location=…`.
+
+**State key rename:** if you already have `{env}/_global.tfstate`, rename the blob to `{env}/vwan.tfstate` before the next apply.
 
 Every plan/apply/destroy passes `-var=location=<slug>`. Non-uksouth runs log a **warning** that the regional lab is a stub.
 
@@ -42,7 +44,7 @@ Stub folders: `environments/{int,prd,igmf}/{italynorth,spaincentral}/{connectivi
 
 | File | Stack | Notes |
 |---|---|---|
-| [`tf-vWAN-Deployment.yml`](tf-vWAN-Deployment.yml) | `_global` | Virtual WAN |
+| [`tf-vWAN-Deployment.yml`](tf-vWAN-Deployment.yml) | `vwan` | Virtual WAN |
 | [`tf-Hub-Deployment.yml`](tf-Hub-Deployment.yml) | `connectivity` | `hubSelection`: `both` \| `hub01` \| `hub02`; Hub02 includes VPN GW |
 | [`tf-Hub-Management-Deployment.yml`](tf-Hub-Management-Deployment.yml) | `mgmt` | LAW, mgmt spoke, alerts |
 | [`tf-AVD-Labs-Deployment.yml`](tf-AVD-Labs-Deployment.yml) | `labs` | Lab spokes + storage |
@@ -50,7 +52,7 @@ Stub folders: `environments/{int,prd,igmf}/{italynorth,spaincentral}/{connectivi
 
 All support `action`: `plan` \| `apply` \| `destroy`, `envName`: `int` \| `prd` \| `igmf`, and `location`: `uksouth` \| `italynorth` \| `spaincentral`.
 
-When **`envName=igmf`** and **`location=uksouth`**: service connection `SC-IGMF-VDI-TF-01`, hosted pool, variable group `tf-backend-igmf`, and **seed** `*.tfvars.example` → `terraform.tfvars` (including `_global` from `environments/igmf/global.tfvars.example`). Bank envs (`int`/`prd`) never seed. IGMF seed is skipped for non-uksouth locations (no example tfvars in stubs).
+When **`envName=igmf`** and **`location=uksouth`**: service connection `SC-IGMF-VDI-TF-01`, hosted pool, variable group `tf-backend-igmf`, and **seed** `*.tfvars.example` → `terraform.tfvars` (including `vwan` from `environments/igmf/global.tfvars.example`). Bank envs (`int`/`prd`) never seed. IGMF seed is skipped for non-uksouth locations (no example tfvars in stubs).
 
 ### Catch-all / convenience
 
@@ -94,7 +96,7 @@ From `docs/subscription-inventory.md` (bank) and IGMF sandbox plan — **`locati
 
 Non-uksouth: placeholder SC `TODO-<env>-<location>-SC` + hosted pool until regional labs exist.
 
-IGMF uksouth state keys: `igmf/<stack>.tfstate` (`_global`, `connectivity`, `mgmt`, `labs`, `avd`). See [`environments/igmf/README.md`](../environments/igmf/README.md).
+IGMF uksouth state keys: `igmf/<stack>.tfstate` (`vwan`, `connectivity`, `mgmt`, `labs`, `avd`). See [`environments/igmf/README.md`](../environments/igmf/README.md).
 
 ## Out of scope (unchanged)
 

@@ -1,4 +1,4 @@
-# TODO(deploy): IGMF sandbox connectivity subscription GUID (often same as _global).
+# TODO(deploy): IGMF sandbox connectivity subscription GUID (often same as vwan).
 variable "azure_subscription_id" {
   description = "Azure subscription GUID for the connectivity scope (hubs, firewall, VPN)."
   type        = string
@@ -22,7 +22,7 @@ variable "subscription_code" {
   default     = "conn"
 }
 
-# Sourced from environments/_global output vwan_id (state key igmf/_global.tfstate).
+# Sourced from environments/vwan output vwan_id (state key igmf/vwan.tfstate).
 variable "virtual_wan_id" {
   description = "Resource ID of the shared Virtual WAN."
   type        = string

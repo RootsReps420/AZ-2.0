@@ -76,7 +76,7 @@
 ## Quick reference — env stack map
 
 ```text
-_global          → vWAN
+vwan             → vWAN
 connectivity     → FWP stub, Hub01, Hub02 (VPN peer still placeholder); Hub03 spare in code only (not deployed)
 mgmt             → LAW + DCE + Insights DCR; alerts + APR/Reader; NSG/RT
 labs             → PERS/PRIV/MSH spokes; 10 FSLogix STAs; 15 KVs; 12 PERS blobs

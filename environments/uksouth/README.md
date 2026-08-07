@@ -5,7 +5,7 @@
 They are **superseded** by the migration layout:
 
 ```
-environments/_global/                 # shared Virtual WAN
+environments/vwan/                 # shared Virtual WAN
 environments/int/{connectivity,mgmt,labs,avd}/   # DT — first live target
 environments/prd/{connectivity,mgmt,labs,avd}/   # production (TDA code prd)
 ```

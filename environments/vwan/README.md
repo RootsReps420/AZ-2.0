@@ -1,4 +1,4 @@
-# environments/_global
+# environments/vwan
 
 Root configuration for resources deployed **once** and shared across all
 regions and environments. Currently deploys the global **Virtual WAN** and its
@@ -22,7 +22,7 @@ terraform init \
   -backend-config="resource_group_name=rg-tfstate" \
   -backend-config="storage_account_name=sttfstatevdi" \
   -backend-config="container_name=tfstate" \
-  -backend-config="key=_global.tfstate"
+  -backend-config="key=vwan.tfstate"
 
 terraform plan
 terraform apply

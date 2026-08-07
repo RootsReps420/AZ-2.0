@@ -12,7 +12,7 @@ values plus module calls. All logic lives in `modules/`.
 - **MSH lab**: spoke (dual-hub + 3-rule UDR), pooled host pool, workspace
 - **Images**: compute gallery + PERS and MSH base image definitions
 
-The global Virtual WAN lives in [`environments/_global`](../../_global); pass its
+The global Virtual WAN lives in [`environments/vwan`](../../vwan); pass its
 `vwan_id` output into `var.virtual_wan_id`.
 
 ## Region agnostic

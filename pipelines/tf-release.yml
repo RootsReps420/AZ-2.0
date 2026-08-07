@@ -1,6 +1,6 @@
 # Parameterised Terraform release — one stack per run (catch-all).
 # Prefer named pipelines (tf-Hub-Deployment.yml, etc.) for day-to-day.
-# Deploy order: _global → connectivity → mgmt → labs → avd
+# Deploy order: vwan → connectivity → mgmt → labs → avd
 # envName=igmf seeds *.tfvars.example → terraform.tfvars (uksouth only; bank envs do not).
 
 trigger: none
@@ -27,7 +27,7 @@ parameters:
     type: string
     default: connectivity
     values:
-      - _global
+      - vwan
       - connectivity
       - mgmt
       - labs
@@ -70,22 +70,22 @@ stages:
         hubSelection: ${{ parameters.hubSelection }}
         seedIgmfTfvars: ${{ and(eq(parameters.envName, 'igmf'), eq(parameters.location, 'uksouth')) }}
 
-  - ${{ if eq(parameters.stackName, '_global') }}:
+  - ${{ if eq(parameters.stackName, 'vwan') }}:
     - stage: terraform
-      displayName: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }}/_global — Virtual WAN
+      displayName: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }}/vwan — Virtual WAN
       jobs:
         - template: templates/terraform-stack.yml
           parameters:
             envName: ${{ parameters.envName }}
             location: ${{ parameters.location }}
-            stackName: _global
+            stackName: vwan
             azureServiceConnection: $(azureServiceConnection)
             agentPool: $(agentPool)
             tfBackendResourceGroup: $(tfBackendResourceGroup)
             tfBackendStorageAccount: $(tfBackendStorageAccount)
             tfBackendContainer: $(tfBackendContainer)
             action: ${{ parameters.action }}
-            workingDirectory: environments/_global
+            workingDirectory: environments/vwan
             seedIgmfTfvars: ${{ and(eq(parameters.envName, 'igmf'), eq(parameters.location, 'uksouth')) }}
             stageLabel: ${{ parameters.action }} ${{ parameters.envName }}/${{ parameters.location }} — Virtual WAN
             scopeManifest: |

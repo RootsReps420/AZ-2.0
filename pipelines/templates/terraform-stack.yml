@@ -10,7 +10,7 @@
 #
 # location=uksouth: workdir environments/<env>/<stack>, state <env>/<stack>.tfstate
 # location=italynorth|spaincentral: workdir environments/<env>/<location>/<stack>,
-#   state <env>/<location>/<stack>.tfstate (_global workdir always environments/_global)
+#   state <env>/<location>/<stack>.tfstate (vwan workdir always environments/vwan)
 
 parameters:
   - name: envName
@@ -71,8 +71,8 @@ jobs:
     variables:
       ${{ if ne(parameters.workingDirectory, '') }}:
         stackDir: ${{ parameters.workingDirectory }}
-      ${{ elseif eq(parameters.stackName, '_global') }}:
-        stackDir: environments/_global
+      ${{ elseif eq(parameters.stackName, 'vwan') }}:
+        stackDir: environments/vwan
       ${{ elseif eq(parameters.location, 'uksouth') }}:
         stackDir: environments/${{ parameters.envName }}/${{ parameters.stackName }}
       ${{ else }}:
@@ -139,9 +139,9 @@ jobs:
           script: |
             set -euo pipefail
             ROOT="$(Build.SourcesDirectory)"
-            if [ "${{ parameters.stackName }}" = "_global" ]; then
+            if [ "${{ parameters.stackName }}" = "vwan" ]; then
               SRC="${ROOT}/environments/igmf/global.tfvars.example"
-              DST="${ROOT}/environments/_global/terraform.tfvars"
+              DST="${ROOT}/environments/vwan/terraform.tfvars"
             else
               SRC="${ROOT}/$(stackDir)/terraform.tfvars.example"
               DST="${ROOT}/$(stackDir)/terraform.tfvars"

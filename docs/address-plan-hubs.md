@@ -4,7 +4,7 @@ Cross-checked against `legacy/platform/vdi-platform/params/{int,prd,ppd}/config.
 `legacy/pers/vdi-core-pers/params/{int,prd}/config.yml`, and the Azure 2.0 hub IP
 CIDR ranges document (Production `10.218.64.0/20`).
 
-Hub prefixes must be **unique across environments** when they share the `_global`
+Hub prefixes must be **unique across environments** when they share the `vwan`
 Virtual WAN (int + prd attach to the same `virtual_wan_id`).
 
 Classic hub VNet slices (`AzureFirewallSubnet`, `AzureFirewallManagementSubnet`,

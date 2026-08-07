@@ -21,7 +21,7 @@ git push igmf main
 
 | File | Role |
 |---|---|
-| [`pipelines/tf-igmf-release.yml`](../../pipelines/tf-igmf-release.yml) | Parameterised: `_global` \| `connectivity` \| `mgmt` \| `labs` \| `avd` + plan/apply/destroy |
+| [`pipelines/tf-igmf-release.yml`](../../pipelines/tf-igmf-release.yml) | Parameterised: `vwan` | `connectivity` \| `mgmt` \| `labs` \| `avd` + plan/apply/destroy |
 | [`pipelines/tf-igmf-connectivity.yml`](../../pipelines/tf-igmf-connectivity.yml) | Convenience plan→apply connectivity |
 
 AzDo pipeline name: **Azure-2.0**. Branch: **`main`**.
@@ -40,19 +40,19 @@ Bank `tf-release.yml` is unchanged.
 ## Apply order / phases
 
 ```text
-1. _global            (done)  → save vwan_id
+1. vwan            (done)  → save vwan_id
 2. connectivity       (done)  → save hub01_id, hub02_id, hub01_firewall_private_ip
 3. mgmt               (next)  → save law_id, agents_subnet_id
 4. labs               (thin)  → spokes; FSLogix/blob off in example
 5. avd                (optional / heavy)
-6. destroy            reverse: avd → labs → mgmt → connectivity → _global
+6. destroy            reverse: avd → labs → mgmt → connectivity → vwan
 ```
 
 ### What needs to go where
 
 | From | Output | Paste into | Variable |
 |---|---|---|---|
-| `_global` | `vwan_id` | `connectivity/terraform.tfvars.example` | `virtual_wan_id` (already set) |
+| `vwan` | `vwan_id` | `connectivity/terraform.tfvars.example` | `virtual_wan_id` (already set) |
 | connectivity | `hub01_id` | `mgmt` + `labs` examples | `hub01_id` |
 | connectivity | `hub01_firewall_private_ip` | `mgmt` + `labs` examples | `hub01_firewall_private_ip` |
 | connectivity | `hub02_id` | `labs` example | `hub02_id` |
@@ -87,8 +87,8 @@ Still deploys 30 MSH pools + gallery. Prefer `enable_pers_host_pools = false` / 
 | labs | Full spoke code; thin flags in example |
 | avd | Full catalogs; optional |
 
-`_global` is shared under `environments/_global`; IGMF seeds from
-[`global.tfvars.example`](global.tfvars.example) (state `igmf/_global.tfstate`).
+`vwan` is shared under `environments/vwan`; IGMF seeds from
+[`global.tfvars.example`](global.tfvars.example) (state `igmf/vwan.tfstate`).
 
 ## Bank landmines (do not bring into IGMF)
 

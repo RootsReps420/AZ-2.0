@@ -40,7 +40,7 @@ Tenant IDs: referenced as AzDo macros (`common_dev_tenantId` / `common_bld_tenan
 | avd | Host pools, workspaces, KV, gallery RG | Known gallery GUID usable as start: `717872a8-000f-4990-a35b-0f957a9c7856` — confirm AVD sub | Known gallery: `a6fe8767-8373-4b41-ad17-b4301ca6fcd0` — confirm AVD sub |
 | lab (pers/mult/priv) | Spoke VNets, session hosts, FSLogix | TODO(deploy) per lab | TODO(deploy) per lab |
 | image-build | Packer build sub | TODO(deploy) | TODO(deploy) |
-| `_global` | Shared Virtual WAN | TODO(deploy) — often same as connectivity | TODO(deploy) |
+| `vwan` | Shared Virtual WAN | TODO(deploy) — often same as connectivity | TODO(deploy) |
 
 Private agents: `uks-{env}-vdi-mgmt-vss-01` (PS-managed).
 

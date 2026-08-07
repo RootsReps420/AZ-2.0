@@ -28,7 +28,7 @@ Local-only (gitignored — stay on disk, not pushed): `docs/plans/03-cursor-hand
 
 - [Purpose and topology](#purpose-and-topology)
 - [Pipeline → stack map](#pipeline--stack-map)
-- [Deploy: Virtual WAN (_global)](#deploy-virtual-wan-_global)
+- [Deploy: Virtual WAN (vwan)](#deploy-virtual-wan-vwan)
 - [Deploy: Connectivity](#deploy-connectivity)
 - [Deploy: Management](#deploy-management)
 - [Deploy: Labs](#deploy-labs)
@@ -76,7 +76,7 @@ Port the legacy Azure 1.0 VDI estate (Bicep + PowerShell across platform / pers 
 
 ```mermaid
 flowchart TB
-  subgraph global ["environments/_global"]
+  subgraph global ["environments/vwan"]
     VWAN[Azure Virtual WAN]
   end
 
@@ -208,7 +208,7 @@ flowchart TB
 ### Apply order (mandatory)
 
 ```text
-1. environments/_global
+1. environments/vwan
 2. environments/<env>/connectivity
 3. environments/<env>/mgmt
 4. environments/<env>/labs
@@ -222,7 +222,7 @@ Stacks do **not** use remote-state data sources today. Wire outputs into the nex
 
 ```text
 environments/
-  _global/                 # Shared Virtual WAN
+  vwan/                    # Shared Virtual WAN
   int/{connectivity,mgmt,labs,avd}/
   prd/{connectivity,mgmt,labs,avd}/
   igmf/{connectivity,mgmt,labs,avd}/   # sandbox — not bank cutover
@@ -239,7 +239,7 @@ Ignore for cutover: `environments/uksouth/{dev,prod}`, `environments/prod/` (nam
 
 ## Pipeline → stack map
 
-Prefer the **named** pipelines below. [`pipelines/tf-release.yml`](pipelines/tf-release.yml) is a single-stack catch-all — **not** an orchestrator and **not** a prerequisite. It does not run `_global` → `avd` in one go; you still queue one stack at a time.
+Prefer the **named** pipelines below. [`pipelines/tf-release.yml`](pipelines/tf-release.yml) is a single-stack catch-all — **not** an orchestrator and **not** a prerequisite. It does not run `vwan` → `avd` in one go; you still queue one stack at a time.
 
 Shared env + **location** → service connection / agent / backend mapping lives in [`pipelines/templates/env-context.yml`](pipelines/templates/env-context.yml). Hub selection and location path/state rules: [`pipelines/README.md`](pipelines/README.md).
 
@@ -249,7 +249,7 @@ Shared env + **location** → service connection / agent / backend mapping lives
 
 | Pipeline | Stack | Working directory (uksouth) | Deploys |
 |---|---|---|---|
-| [`tf-vWAN-Deployment.yml`](pipelines/tf-vWAN-Deployment.yml) | `_global` | `environments/_global` | Virtual WAN |
+| [`tf-vWAN-Deployment.yml`](pipelines/tf-vWAN-Deployment.yml) | `vwan` | `environments/vwan` | Virtual WAN |
 | [`tf-Hub-Deployment.yml`](pipelines/tf-Hub-Deployment.yml) | connectivity | `environments/<env>/connectivity` | FWP + Hub01 / Hub02 |
 | [`tf-Hub-Management-Deployment.yml`](pipelines/tf-Hub-Management-Deployment.yml) | mgmt | `environments/<env>/mgmt` | LAW, alerts, AgentsSubnet |
 | [`tf-AVD-Labs-Deployment.yml`](pipelines/tf-AVD-Labs-Deployment.yml) | labs | `environments/<env>/labs` | spokes, FSLogix, KVs, blobs |
@@ -257,11 +257,11 @@ Shared env + **location** → service connection / agent / backend mapping lives
 | [`tf-release.yml`](pipelines/tf-release.yml) | param (`stackName`) | same as chosen stack | single-stack catch-all — **not** an orchestrator |
 | Convenience wrappers | — | — | [`tf-int-connectivity.yml`](pipelines/tf-int-connectivity.yml), [`tf-igmf-*.yml`](pipelines/tf-igmf-release.yml) |
 
-`<env>` = `int` | `prd` | `igmf`. Apply order across runs must still be `_global` → `connectivity` → `mgmt` → `labs` → `avd`.
+`<env>` = `int` | `prd` | `igmf`. Apply order across runs must still be `vwan` → `connectivity` → `mgmt` → `labs` → `avd`.
 
 ```mermaid
 flowchart LR
-  VW[tf-vWAN-Deployment] --> G[_global]
+  VW[tf-vWAN-Deployment] --> G[vwan]
   HB[tf-Hub-Deployment] --> C[connectivity]
   MG[tf-Hub-Management-Deployment] --> M[mgmt]
   LB[tf-AVD-Labs-Deployment] --> L[labs]
@@ -306,10 +306,10 @@ flowchart LR
    - uksouth prd → `SC-P-VDI-PRD-C-01` on pool `uks-prd-vdi-mgmt-vss-01`
    - uksouth igmf → `SC-IGMF-VDI-TF-01` on hosted `Azure Pipelines` (+ variable group `tf-backend-igmf`; **seeds** tfvars from examples)
    - italynorth / spaincentral → placeholder `TODO-<env>-<location>-SC` on hosted pool
-3. Job logs a **deployment scope banner** (env, location, stack, SC), then working directory = `environments/_global` or `environments/<env>/<stack>` (uksouth) or `environments/<env>/<location>/<stack>` (other).
+3. Job logs a **deployment scope banner** (env, location, stack, SC), then working directory = `environments/vwan` or `environments/<env>/<stack>` (uksouth) or `environments/<env>/<location>/<stack>` (other).
 4. State key = `{env}/{stack}.tfstate` (uksouth) or `{env}/{location}/{stack}.tfstate` (other) in the configured storage container (`tf.backend.*`).
 5. Plan/apply/destroy always pass `-var=location=<slug>`. Connectivity also uses `enable_hub01` / `enable_hub02` (one state file). Phased first deploy: `hub01` then `hub02`. Details: [`pipelines/README.md`](pipelines/README.md).
-6. Order of applies across runs must still be `_global` → `connectivity` → `mgmt` → `labs` → `avd`.
+6. Order of applies across runs must still be `vwan` → `connectivity` → `mgmt` → `labs` → `avd`.
 
 Reusable job template: [`pipelines/templates/terraform-stack.yml`](pipelines/templates/terraform-stack.yml) (scope banner → install TF → `init` → `validate` → `plan` → `apply` or `destroy`). Connectivity stages: [`pipelines/templates/connectivity-stages.yml`](pipelines/templates/connectivity-stages.yml).
 
@@ -360,13 +360,13 @@ These keep running in AzDo against the Azure objects Terraform created. They nee
 
 ---
 
-## Deploy: Virtual WAN (_global)
+## Deploy: Virtual WAN (vwan)
 
 | Field | Value |
 |---|---|
-| **Pipeline** | [`tf-vWAN-Deployment.yml`](pipelines/tf-vWAN-Deployment.yml) (or `tf-release.yml` with `stackName=_global`) |
-| **Working directory** | `environments/_global` |
-| **State key** | `{env}/_global.tfstate` (e.g. `int/_global.tfstate` when queued with `envName=int`) |
+| **Pipeline** | [`tf-vWAN-Deployment.yml`](pipelines/tf-vWAN-Deployment.yml) (or `tf-release.yml` with `stackName=vwan`) |
+| **Working directory** | `environments/vwan` |
+| **State key** | `{env}/vwan.tfstate` (e.g. `int/vwan.tfstate` when queued with `envName=int`) |
 | **Depends on** | Nothing (first apply) |
 | **Feeds** | connectivity `virtual_wan_id` |
 | **Out of this pipeline** | Hubs, firewall, spokes, AVD — all later stacks |
@@ -391,7 +391,7 @@ Modules called: `naming`, `tags`, `vwan`.
 | **Pipeline** | [`tf-Hub-Deployment.yml`](pipelines/tf-Hub-Deployment.yml) (`hubSelection`: `hub01` \| `hub02` \| `both`); convenience: [`tf-int-connectivity.yml`](pipelines/tf-int-connectivity.yml), [`tf-igmf-connectivity.yml`](pipelines/tf-igmf-connectivity.yml) |
 | **Working directory** | `environments/<env>/connectivity` |
 | **State key** | `{env}/connectivity.tfstate` |
-| **Depends on** | `_global` → `virtual_wan_id` |
+| **Depends on** | `vwan` → `virtual_wan_id` |
 | **Feeds** | mgmt + labs (`hub01_id`, `hub01_firewall_private_ip`); labs MSH also needs `hub02_id` |
 | **Out of this pipeline** | LAW/alerts, lab spokes/storage, AVD objects; Hub02 VPN **site/peer**; full FWP allow-lists; Hub03 until uncommented |
 
@@ -417,7 +417,7 @@ prd parent **`10.218.64.0/20`** holds three `/22` slices; only Hub01/02 are appl
 **Terraform wiring:** `module.hub_secured` → Hub01, `module.hub_unsecured` → Hub02. `module.hub_spare` is commented — not in state. Only Hub01/02 IDs flow into `mgmt` and `labs`.
 
 Do **not** use `10.170.248.0/24` as a hub prefix (collides with PERS `01l` `10.170.248.0/21`).  
-prd hubs must stay distinct from int hubs on the shared `_global` vWAN.
+prd hubs must stay distinct from int hubs on the shared `vwan` vWAN.
 
 **Outputs → next:** `hub01_id`, `hub01_firewall_private_ip`, `hub02_id`, `firewall_policy_id`.  
 `hub03_id` — N/A until `hub_spare` uncommented.  
@@ -641,7 +641,7 @@ Every environment stack is thin glue: it calls these modules with env-specific m
 
 | Module | What it does | Used by |
 |---|---|---|
-| [`modules/platform/vwan`](modules/platform/vwan) | Creates the **Azure Virtual WAN** (Standard SKU). One shared backbone. | `environments/_global` |
+| [`modules/platform/vwan`](modules/platform/vwan) | Creates the **Azure Virtual WAN** (Standard SKU). One shared backbone. | `environments/vwan` |
 | [`modules/platform/firewall-policy`](modules/platform/firewall-policy) | Creates **Firewall Policy** + optional IP groups + rule collection groups. Today: DNS proxy on, **rule collections stub/empty** (full Secure Hub rules → Azure Policy later). | `connectivity` → attached to Hub01 firewall |
 | [`modules/platform/hub-secured`](modules/platform/hub-secured) | **Hub01**: virtual hub + AZFW_Hub + ExpressRoute gateway + Routing Intent (Internet + Private → firewall). Outputs `hub_id`, `firewall_private_ip`. | `connectivity` |
 | [`modules/platform/hub-unsecured`](modules/platform/hub-unsecured) | **Hub02**: virtual hub + VPN gateway shell (no firewall, no Routing Intent). VPN site/connection not added yet. | `connectivity` |
@@ -677,7 +677,7 @@ Every environment stack is thin glue: it calls these modules with env-specific m
 ### Which stack calls which modules
 
 ```text
-_global        → naming, tags, vwan
+vwan           → naming, tags, platform/vwan
 connectivity   → naming, tags, firewall-policy, hub-secured, hub-unsecured
                  (hub-spare = commented spare; not in apply)
 mgmt           → naming, tags, management, spoke-pers (+ alert/APR/UAMI resources in root)
@@ -796,7 +796,7 @@ State keys match [`pipelines/templates/terraform-stack.yml`](pipelines/templates
 
 | Stack | Example key (uksouth) | Example key (italynorth) |
 |---|---|---|
-| `_global` | `int/_global.tfstate` | `int/italynorth/_global.tfstate` |
+| `vwan` | `int/vwan.tfstate` | `int/italynorth/vwan.tfstate` |
 | connectivity | `int/connectivity.tfstate` | `int/italynorth/connectivity.tfstate` |
 | mgmt / labs / avd | `{env}/mgmt.tfstate` etc. | `{env}/{location}/mgmt.tfstate` etc. |
 
@@ -1102,7 +1102,7 @@ Stacks do **not** use remote-state data sources. Copy outputs into the next stac
 
 | From | Output | Into |
 |---|---|---|
-| `_global` | `vwan_id` | connectivity `virtual_wan_id` |
+| `vwan` | `vwan_id` | connectivity `virtual_wan_id` |
 | connectivity | `hub01_id`, `hub01_firewall_private_ip` | mgmt + labs |
 | connectivity | `hub02_id` | labs (MSH dual-hub) |
 | connectivity | `hub03_id` | N/A until `hub_spare` uncommented — then future hub connections |
@@ -1177,7 +1177,7 @@ Offline until creds: `terraform init -backend=false` + `terraform validate` only
 | First env | `int` |
 | Prod env folder | `prd` |
 | Location (pipeline) | `uksouth` live; `italynorth` / `spaincentral` placeholders |
-| Apply order | `_global` → connectivity → mgmt → labs → avd |
+| Apply order | `vwan` → connectivity → mgmt → labs → avd |
 | State keys | `{env}/{stack}.tfstate` (uksouth); `{env}/{location}/{stack}.tfstate` (other) |
 | avd providers | `azurerm` + `azapi` (personal SP schedules) + `time` (tokens) |
 | PERS/PRIV path | Spoke → Hub01 (internet security + default-to-firewall) → AZFW / Routing Intent / ER |

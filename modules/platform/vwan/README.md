@@ -1,7 +1,7 @@
 # modules/platform/vwan
 
 Deploys the **Azure Virtual WAN** — the backbone of the hub-and-spoke topology.
-This is a **global** resource: deployed once (in `environments/_global`) and
+This is a **global** resource: deployed once (in `environments/vwan`) and
 shared across every region and environment.
 
 ## What it deploys

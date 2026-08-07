@@ -1,5 +1,5 @@
 # IGMF sandbox release — one stack per run into ignitemyfire.co.uk.
-# Deploy order: _global → connectivity → mgmt → labs → avd.
+# Deploy order: vwan → connectivity → mgmt → labs → avd.
 # Uses env-context for SC/agent (uksouth → IGMF SC; other locations → placeholders).
 # Requires AzDo variable group: tf-backend-igmf (when location=uksouth).
 
@@ -19,7 +19,7 @@ parameters:
     type: string
     default: connectivity
     values:
-      - _global
+      - vwan
       - connectivity
       - mgmt
       - labs
@@ -62,22 +62,22 @@ stages:
         hubSelection: ${{ parameters.hubSelection }}
         seedIgmfTfvars: ${{ eq(parameters.location, 'uksouth') }}
 
-  - ${{ if eq(parameters.stackName, '_global') }}:
+  - ${{ if eq(parameters.stackName, 'vwan') }}:
     - stage: terraform
-      displayName: ${{ parameters.action }} igmf/${{ parameters.location }}/_global — Virtual WAN
+      displayName: ${{ parameters.action }} igmf/${{ parameters.location }}/vwan — Virtual WAN
       jobs:
         - template: templates/terraform-stack.yml
           parameters:
             envName: igmf
             location: ${{ parameters.location }}
-            stackName: _global
+            stackName: vwan
             azureServiceConnection: $(azureServiceConnection)
             agentPool: $(agentPool)
             tfBackendResourceGroup: $(tfBackendResourceGroup)
             tfBackendStorageAccount: $(tfBackendStorageAccount)
             tfBackendContainer: $(tfBackendContainer)
             action: ${{ parameters.action }}
-            workingDirectory: environments/_global
+            workingDirectory: environments/vwan
             seedIgmfTfvars: ${{ eq(parameters.location, 'uksouth') }}
             stageLabel: ${{ parameters.action }} igmf/${{ parameters.location }} — Virtual WAN
             scopeManifest: |

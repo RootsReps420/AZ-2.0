@@ -3,7 +3,7 @@ location              = "uksouth"
 environment           = "int"
 subscription_code     = "conn"
 
-# From environments/_global output vwan_id
+# From environments/vwan output vwan_id
 virtual_wan_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/REPLACE/providers/Microsoft.Network/virtualWans/REPLACE"
 
 mandatory_tags = {

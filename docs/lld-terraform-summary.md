@@ -41,7 +41,7 @@ vdi-terraform/
 │   ├── avd/          # host pools, workspaces, scaling
 │   └── gallery/
 ├── environments/     # config only — call modules
-│   ├── _global/      # Virtual WAN (once)
+│   ├── vwan/         # Virtual WAN (once)
 │   ├── uksouth/{dev,prod}/
 │   ├── italynorth/{dev,prod}/
 │   └── spaincentral/{dev,prod}/

@@ -8,7 +8,7 @@ Deploys (gated by `enable_hub01` / `enable_hub02`, both default `true`):
 - Hub01 secured (AZFW + routing intent + ER gateway shell)
 - Hub02 unsecured (VPN gateway shell — no peer)
 
-Requires `virtual_wan_id` from `environments/_global` applied with state key `igmf/_global.tfstate`.
+Requires `virtual_wan_id` from `environments/vwan` applied with state key `igmf/vwan.tfstate`.
 
 ## Pipelines
 
@@ -23,4 +23,4 @@ terraform init -backend=false
 terraform validate
 ```
 
-Copy `terraform.tfvars.example` → `terraform.tfvars` (gitignored) and fill `virtual_wan_id` after `_global` apply.
+Copy `terraform.tfvars.example` → `terraform.tfvars` (gitignored) and fill `virtual_wan_id` after `vwan` apply.

@@ -22,7 +22,7 @@ TDA naming/tagging standards, cross-referenced with what already existed in the 
 - [x] Build `avd/scalingplan`
 - [x] Build `gallery/gallery`
 - [x] Build `gallery/image-definition`
-- [x] Wire `environments/uksouth/{dev,prod}`; verify `_global`
+- [x] Wire `environments/uksouth/{dev,prod}`; verify `vwan`
 - [x] examples/basic + versions.tf per module
 
 ## Guiding conventions (apply to every module)
@@ -75,7 +75,7 @@ Boundary: Terraform manages gallery + image definitions only; Packer builds vers
 - `gallery/image-definition`: reusable single-definition module (instantiated per OS/SKU).
 
 ## Phase 5 - Environments (uksouth)
-- `_global` (vwan) verified.
+- `vwan` verified.
 - `environments/uksouth/dev` and `environments/uksouth/prod` wire all modules.
 - Each root: `main.tf`, `variables.tf`, `outputs.tf`, `providers.tf`, `terraform.tfvars.example`, `README.md`.
 

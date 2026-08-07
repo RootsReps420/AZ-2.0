@@ -20,7 +20,7 @@ Ports the legacy estate in `legacy/` onto the new Terraform modules. Based on de
 
 ## Desired outcome (north star)
 Once this migration is done, the deliverable is **Terraform code that lives in its own managed GitHub repo(s)** and is **deployed via Azure DevOps pipelines** to produce a working **Azure Virtual WAN** architecture:
-- **Two hubs** on a shared Virtual WAN (`_global`)
+- **Two hubs** on a shared Virtual WAN (`vwan`)
 - **Secured hub (Hub01)** - PAA traffic + AVD **persistent personal (PERS)**; Azure Firewall + routing intent; PERS spokes via `spoke-pers`
 - **Unsecured hub (Hub02)** - **TSA** traffic from **Multi-Session (MSH)** hosts; VPN gateway egress; MSH spokes via `spoke-msh` with spoke UDRs steering TSA/internet via Hub02 VPN
 - Platform + AVD service objects in Terraform; session hosts / Packer versions / operational lifecycle remain PowerShell
@@ -53,7 +53,7 @@ Minimum set required to deploy a working (ish) two-hub vWAN via Terraform + AzDo
 
 | Capability | Module / home | Status for functional-ish |
 |---|---|---|
-| Shared Virtual WAN | `platform/vwan` + `environments/_global` | Ready |
+| Shared Virtual WAN | `platform/vwan` + `environments/vwan` | Ready |
 | Secured hub (firewall + ER GW + routing intent) | `platform/hub-secured` | Ready (needs `firewall_policy_id`; ER circuit peering id external) |
 | Baseline firewall policy (stub/minimal) | `platform/firewall-policy` | Module ready; env currently empty rules - need thin baseline under RI or traffic default-denies |
 | Unsecured hub + VPN gateway | `platform/hub-unsecured` | Gateway scaffold ready; **VPN site/connection surface missing** - deferred with other engineer |
@@ -89,7 +89,7 @@ vdi-terraform/
 │   ├── avd/{hostpool,workspace,scalingplan}/
 │   └── gallery/{gallery,image-definition}/
 ├── environments/                    # root stacks (multi-subscription via per-scope roots / provider aliases)
-│   ├── _global/                     # shared Virtual WAN
+│   ├── vwan/                        # shared Virtual WAN
 │   ├── idv/ ici/ itt/ int/          # dev-tier env codes (kept split for now)
 │   │   └── <env>/
 │   │       ├── connectivity/        # hub-secured + firewall-policy   (connectivity subscription)
@@ -163,7 +163,7 @@ flowchart TD
 ### Runtime topology (subscriptions + vWAN)
 ```mermaid
 flowchart TB
-  subgraph glob [_global]
+  subgraph glob [vwan]
     vwan[Virtual WAN]
   end
   subgraph connsub [Connectivity subscription]
@@ -242,7 +242,7 @@ Only port code that is actually reachable from a pipeline entry point. Much of t
 
 ### Phase B - Subscription & environment topology
 - Use **per-scope root stacks** per env (`connectivity/`, `mgmt/`, `avd/`, `labs/`) as shown in the target layout — one Azure provider subscription context per root.
-- Restructure `environments/`: keep the dev-tier codes (`idv`, `ici`, `itt`, `int`) as separate env roots for now, map `prd` -> `prod`, and drop `ppd`. Keep `_global` for the shared vWAN. Greenfield `environments/uksouth/{dev,prod}` are superseded — repurpose as `int`/`prod` starting point or remove once new roots exist.
+- Restructure `environments/`: keep the dev-tier codes (`idv`, `ici`, `itt`, `int`) as separate env roots for now, map `prd` -> `prod`, and drop `ppd`. Keep `vwan` for the shared vWAN. Greenfield `environments/uksouth/{dev,prod}` are superseded — repurpose as `int`/`prod` starting point or remove once new roots exist.
 - Document what each dev-tier code maps to (subscription(s), purpose). Known: **`int` = DT**. `idv`, `ici`, `itt` purposes still TBD — do not block starting with `int` + `prod`.
 - Externalise per-env subscription IDs, tenant IDs, service-connection names into per-env tfvars + a variable-set doc. No hardcoded subs/tenants in `.tf`.
 - **Preserve the subscription set verbatim.** Capture every existing subscription into `docs/subscription-inventory.md` + tfvars.
@@ -293,7 +293,7 @@ Only port code that is actually reachable from a pipeline entry point. Much of t
 - **Keep operational PS pipelines unchanged** (except TDA name refs): all `vdi-scripts` build/decom/power/token/RBAC/packaging/disk/ADE; all `vdi-mult` session-host release/rotation/decom/DR/maintenance/user-assign/FSLogix profile ops; all `vdi-images` Packer builds + version purge/reconcile/tag ops; all `vdi-libraries` device/session/group helpers.
 - **RETIRE:** `*/retired/*`, `ppd` schedules, peering-as-peering (replaced by hub connections).
 - **DEFER:** `vdi-initiatives/*`, Hub02 VPN wiring pipelines (when they appear), GLB rewrite, sub create/destroy (GLB — inventory only).
-- Deploy order for functional-ish vWAN: `_global` → `connectivity` (Hub01 + baseline FWP + Hub02 scaffold) → spokes/connections. Then mgmt/AVD/gallery/FSLogix for parity.
+- Deploy order for functional-ish vWAN: `vwan` → `connectivity` (Hub01 + baseline FWP + Hub02 scaffold) → spokes/connections. Then mgmt/AVD/gallery/FSLogix for parity.
 
 ## Final coverage appendix (pre-build gate)
 

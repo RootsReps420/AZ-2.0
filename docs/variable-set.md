@@ -27,7 +27,7 @@ Pass as `var.mandatory_tags` into every env root. Do not embed owner/cost string
 
 | Variable | Where | Notes |
 |---|---|---|
-| `azure_subscription_id` | every env root | Scope GUID for that stack (connectivity/mgmt/avd/labs/_global) |
+| `azure_subscription_id` | every env root | Scope GUID for that stack (connectivity/mgmt/avd/labs/vwan) |
 | `azure_tenant_id` | optional env var / tfvars | Prefer `ARM_TENANT_ID` for provider; document AzDo macros below |
 | Service connection | AzDo only | `SC-{tier}-VDI-{env}-C-01` — see `docs/subscription-inventory.md` |
 | UAA connection | AzDo only | `SC-*-VDI-*-UAA-01` |

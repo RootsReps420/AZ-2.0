@@ -772,11 +772,11 @@ Full detail: `[docs/address-plan-hubs.md](docs/address-plan-hubs.md)`.
 #### int hub IPs (unchanged — no Hub03)
 
 
-| Hub   | CIDR              | Role                                             |
-| ----- | ----------------- | ------------------------------------------------ |
-| Hub01 | `10.170.245.0/24` | Secured                                          |
-| Hub02 | `10.170.246.0/24` | Unsecured                                        |
-| Hub03 | —                 | Not in int (and spare not applied on prd either) |
+| Hub   | CIDR              | Role                                            |
+| ----- | ----------------- | ----------------------------------------------- |
+| Hub01 | `10.170.245.0/24` | Secured                                         |
+| Hub02 | `10.170.246.0/24` | Unsecured                                       |
+| Hub03 | `10.170.247.0/24` | Spare Hub - Not Deployment (Code commented out) |
 
 
 ---

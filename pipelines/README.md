@@ -27,29 +27,22 @@ All entry pipelines take `location` alongside `envName`:
 
 | `location` | Working directory | State key | Identity |
 |---|---|---|---|
-| `uksouth` | `environments/<env>/<stack>` (`vwan` → `config/vwan`) | `{env}/{stack}.tfstate` | Live SC / agents from [`templates/env-context.yml`](templates/env-context.yml) |
-| `italynorth` / `spaincentral` | `environments/<env>/<location>/<stack>` | `{env}/{location}/{stack}.tfstate` | Placeholder SC `TODO-<env>-<location>-SC`, hosted `Azure Pipelines` |
+| any (stacks) | `environments/<env>/<stack>` (`vwan` → `config/vwan`) | uksouth: `{env}/{stack}.tfstate`; else `{env}/{location}/{stack}.tfstate` | See [`templates/env-context.yml`](templates/env-context.yml) |
 
-`vwan` workdir is always `config/vwan` (shared WAN). Non-uksouth still gets a location-scoped state key and `-var=location=…`.
+`vwan` workdir is always `config/vwan`. Region-specific **values** come from `-var-file=environments/region/<location>/<env>.<stack>.tfvars` when present, plus `-var=location=…`.
 
 **State key rename:** if you already have `{env}/_global.tfstate`, rename the blob to `{env}/vwan.tfstate` before the next apply.
 
-Every plan/apply/destroy passes `-var=location=<slug>`. Non-uksouth runs log a **warning** that the regional lab is a stub.
+Every plan/apply/destroy passes `-var=location=<slug>`. Non-uksouth runs log a **warning** that the regional lab SC/agents are still placeholders.
 
 ### Regional var-files (values)
 
-Optional committed values live under `environments/region/<location>/<env>.<stack>.tfvars`.
-When the file exists, `terraform-stack.yml` adds `-var-file=…` on plan/destroy (apply uses the plan).
+Committed values: `environments/region/<location>/<env>.<stack>.tfvars`.
+When present, `terraform-stack.yml` adds `-var-file=…` on plan/destroy (apply uses the plan).
 
-| File | Loaded when |
-|---|---|
-| [`environments/region/uksouth/int.connectivity.tfvars`](../environments/region/uksouth/int.connectivity.tfvars) | `int` + `uksouth` + `connectivity` |
-| [`environments/region/uksouth/prd.connectivity.tfvars`](../environments/region/uksouth/prd.connectivity.tfvars) | `prd` + `uksouth` + `connectivity` |
-| [`environments/region/uksouth/igmf.connectivity.tfvars`](../environments/region/uksouth/igmf.connectivity.tfvars) | `igmf` + `uksouth` + `connectivity` |
+**connectivity** files exist for all three locations × `int` / `prd` / `igmf`. Italy/Spain hub CIDRs are blank (`""`) until the address plan is filled — do not apply those regions until set.
 
-Stack code stays in `environments/<env>/<stack>/`. More env/stack/region files can be added the same way.
-
-Stub folders: `environments/{int,prd,igmf}/{italynorth,spaincentral}/{connectivity,mgmt,labs,avd}/` (README only until real stacks land).
+Stack code stays in `environments/<env>/<stack>/`. Legacy stub dirs under `environments/<env>/{italynorth,spaincentral}/` are unused by pipelines now.
 
 ## Pipelines in this folder
 

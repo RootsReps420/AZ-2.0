@@ -4,7 +4,7 @@
 #   hub02 — add/keep Hub02 + VPN (keeps Hub01 enabled)
 #   both  — Hub01 + Hub02 in one apply (phased first-time: run hub01 then hub02)
 # envName=igmf seeds terraform.tfvars from the connectivity *.tfvars.example (uksouth only).
-# location=uksouth → environments/<env>/connectivity; else environments/<env>/<location>/connectivity
+# location → environments/<env>/connectivity + region/<location>/<env>.connectivity.tfvars
 
 trigger: none
 

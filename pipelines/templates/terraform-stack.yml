@@ -8,13 +8,10 @@
 # staged Hub01→Hub02 applies, or hubSelection (both|hub01|hub02) to derive flags.
 # Destroy never passes hub -vars (full stack teardown); always passes -var=location.
 #
-# location=uksouth: workdir environments/<env>/<stack>, state <env>/<stack>.tfstate
-# location=italynorth|spaincentral: workdir environments/<env>/<location>/<stack>,
-#   state <env>/<location>/<stack>.tfstate (vwan workdir always config/vwan)
-#
-# Optional regional values:
-#   environments/region/<location>/<env>.<stack>.tfvars
-# Loaded with -var-file when present (first slice: uksouth/int.connectivity.tfvars).
+# location=uksouth: state <env>/<stack>.tfstate
+# location=italynorth|spaincentral: state <env>/<location>/<stack>.tfstate
+# Stack workdir always environments/<env>/<stack> (vwan → config/vwan).
+# Regional values: environments/region/<location>/<env>.<stack>.tfvars (-var-file when present).
 
 parameters:
   - name: envName
@@ -77,10 +74,8 @@ jobs:
         stackDir: ${{ parameters.workingDirectory }}
       ${{ elseif eq(parameters.stackName, 'vwan') }}:
         stackDir: config/vwan
-      ${{ elseif eq(parameters.location, 'uksouth') }}:
-        stackDir: environments/${{ parameters.envName }}/${{ parameters.stackName }}
       ${{ else }}:
-        stackDir: environments/${{ parameters.envName }}/${{ parameters.location }}/${{ parameters.stackName }}
+        stackDir: environments/${{ parameters.envName }}/${{ parameters.stackName }}
       ${{ if eq(parameters.location, 'uksouth') }}:
         stateKey: ${{ parameters.envName }}/${{ parameters.stackName }}.tfstate
       ${{ else }}:

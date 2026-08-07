@@ -244,7 +244,7 @@ Prefer the **named** pipelines below. [`pipelines/tf-release.yml`](pipelines/tf-
 
 Shared env + **location** → service connection / agent / backend mapping lives in [`pipelines/templates/env-context.yml`](pipelines/templates/env-context.yml). Hub selection and location path/state rules: [`pipelines/README.md`](pipelines/README.md).
 
-**`location`:** `uksouth` (default, live) \| `italynorth` \| `spaincentral` (placeholders). Non-uksouth workdirs are `environments/<env>/<location>/<stack>`; state keys `{env}/{location}/{stack}.tfstate`; SC is `TODO-<env>-<location>-SC` until regional labs exist.
+**`location`:** `uksouth` (default, live) \| `italynorth` \| `spaincentral` (placeholders). Stack workdir is always `environments/<env>/<stack>` (`config/vwan` for vwan); values from `environments/region/<location>/<env>.<stack>.tfvars` when present; non-uksouth state keys `{env}/{location}/{stack}.tfstate`; SC is `TODO-<env>-<location>-SC` until regional labs exist.
 
 ### Mapping table
 
@@ -307,7 +307,7 @@ flowchart LR
    - uksouth prd → `SC-P-VDI-PRD-C-01` on pool `uks-prd-vdi-mgmt-vss-01`
    - uksouth igmf → `SC-IGMF-VDI-TF-01` on hosted `Azure Pipelines` (+ variable group `tf-backend-igmf`; **seeds** tfvars from examples)
    - italynorth / spaincentral → placeholder `TODO-<env>-<location>-SC` on hosted pool
-3. Job logs a **deployment scope banner** (env, location, stack, SC), then working directory = `config/vwan` or `environments/<env>/<stack>` (uksouth) or `environments/<env>/<location>/<stack>` (other).
+3. Job logs a **deployment scope banner** (env, location, stack, SC), then working directory = `config/vwan` or `environments/<env>/<stack>`, plus optional `-var-file=environments/region/<location>/<env>.<stack>.tfvars`.
 4. State key = `{env}/{stack}.tfstate` (uksouth) or `{env}/{location}/{stack}.tfstate` (other) in the configured storage container (`tf.backend.*`).
 5. Plan/apply/destroy always pass `-var=location=<slug>`. Connectivity also uses `enable_hub01` / `enable_hub02` (one state file). Phased first deploy: `hub01` then `hub02`. Details: [`pipelines/README.md`](pipelines/README.md).
 6. Order of applies across runs must still be `vwan` → `connectivity` → `mgmt` → `labs` → `avd`.

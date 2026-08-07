@@ -42,7 +42,7 @@
 | C04 | Token ~PT175H10M (175h) | **done** |
 | C05 | Workspace + AG friendly names | **done** |
 | C06 | Scaling exclusion_tag + allLogs diag | **done** |
-| C07 | dummies-guide + validate avd | **done** |
+| C07 | dummies-guide → now README + validate avd | **done** |
 | C08 | storage-fslogix module SMB/ACL model | **done** |
 | C09 | 10 FSLogix STAs + share placement | **done** |
 | C10 | STA ACLs + CMK | **done** |

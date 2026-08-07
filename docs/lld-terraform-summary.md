@@ -53,7 +53,7 @@ vdi-terraform/
 
 **Rule:** modules hold logic; environments hold variable values + module calls.
 
-> **Later change (migration plan 02):** for the Azure 1.0 cutover, live targets are `environments/{int,prod}/{connectivity,mgmt,labs,avd}` (one stack per Azure subscription scope). The LLD’s `uksouth/{dev,prod}` mega-roots still exist as greenfield demos but are **superseded** for cutover. See [dummies-guide.md](dummies-guide.md).
+> **Later change (migration plan 02):** for the Azure 1.0 cutover, live targets are `environments/{int,prod}/{connectivity,mgmt,labs,avd}` (one stack per Azure subscription scope). The LLD’s `uksouth/{dev,prod}` mega-roots still exist as greenfield demos but are **superseded** for cutover. See [../README.md](../README.md).
 
 ---
 

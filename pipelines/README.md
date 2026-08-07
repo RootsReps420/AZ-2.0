@@ -1,5 +1,7 @@
 # Terraform deploy (Phase H)
 
+Stack mapping and full LLD live in repo [README.md](../README.md).
+
 Replace legacy Bicep `deploy_build` / `deploy_release` stages with Terraform.
 Keep the same AzDo SPNs, service connections, and private agents. Do **not** rewrite GLB libraries.
 

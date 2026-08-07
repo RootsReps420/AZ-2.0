@@ -9,15 +9,16 @@ Fill before first `plan`/`apply`. Placeholder zeros (`00000000-…`) are intenti
 
 ## Bank tags (`mandatory_tags`)
 
-Required by `modules/tags`. Example values from legacy `common_subscriptionTags`
-(override per workload if CMDB differs — e.g. mult labs used `AL20632` in some params):
+Required by `modules/tags`. **Platform standard** for int/prd (all stacks):
 
-| Key | Example (int/prod platform) | Source |
-|---|---|---|
-| `costCentre` | `CLL411S1XJ` | legacy subscription tags |
-| `securityClassification` | `Limited` | legacy |
-| `resourceOwner` | `Fletcher, Wayne (Colleague ID 0028929)` | legacy (Whitmore variants exist — use tfvars) |
-| `CMDB_AppID` | `AL17611` | legacy platform; confirm per workload |
+| Key | Value |
+|---|---|
+| `costCentre` | `430034` |
+| `securityClassification` | `Limited` |
+| `resourceOwner` | `VirtualTeam` |
+| `CMDB_AppID` | `AL17611` (legacy platform; confirm per workload if CMDB differs) |
+
+IGMF sandbox uses its own keys (`IGMF-SANDBOX` / `IGMF001` / etc.).
 
 Pass as `var.mandatory_tags` into every env root. Do not embed owner/cost strings in modules.
 

@@ -36,6 +36,19 @@ All entry pipelines take `location` alongside `envName`:
 
 Every plan/apply/destroy passes `-var=location=<slug>`. Non-uksouth runs log a **warning** that the regional lab is a stub.
 
+### Regional var-files (values)
+
+Optional committed values live under `environments/region/<location>/<env>.<stack>.tfvars`.
+When the file exists, `terraform-stack.yml` adds `-var-file=…` on plan/destroy (apply uses the plan).
+
+| File | Loaded when |
+|---|---|
+| [`environments/region/uksouth/int.connectivity.tfvars`](../environments/region/uksouth/int.connectivity.tfvars) | `int` + `uksouth` + `connectivity` |
+| [`environments/region/uksouth/prd.connectivity.tfvars`](../environments/region/uksouth/prd.connectivity.tfvars) | `prd` + `uksouth` + `connectivity` |
+| [`environments/region/uksouth/igmf.connectivity.tfvars`](../environments/region/uksouth/igmf.connectivity.tfvars) | `igmf` + `uksouth` + `connectivity` |
+
+Stack code stays in `environments/<env>/<stack>/`. More env/stack/region files can be added the same way.
+
 Stub folders: `environments/{int,prd,igmf}/{italynorth,spaincentral}/{connectivity,mgmt,labs,avd}/` (README only until real stacks land).
 
 ## Pipelines in this folder

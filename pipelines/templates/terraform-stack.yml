@@ -11,6 +11,10 @@
 # location=uksouth: workdir environments/<env>/<stack>, state <env>/<stack>.tfstate
 # location=italynorth|spaincentral: workdir environments/<env>/<location>/<stack>,
 #   state <env>/<location>/<stack>.tfstate (vwan workdir always config/vwan)
+#
+# Optional regional values:
+#   environments/region/<location>/<env>.<stack>.tfvars
+# Loaded with -var-file when present (first slice: uksouth/int.connectivity.tfvars).
 
 parameters:
   - name: envName
@@ -113,6 +117,12 @@ jobs:
             echo "Action   : ${{ parameters.action }}"
             echo "State    : $(stateKey)"
             echo "Workdir  : $(stackDir)"
+            VAR_FILE="$(Build.SourcesDirectory)/environments/region/${{ parameters.location }}/${{ parameters.envName }}.${{ parameters.stackName }}.tfvars"
+            if [ -f "${VAR_FILE}" ]; then
+              echo "Var-file : environments/region/${{ parameters.location }}/${{ parameters.envName }}.${{ parameters.stackName }}.tfvars"
+            else
+              echo "Var-file : (none — using stack terraform.tfvars / defaults)"
+            fi
             echo "SC       : ${{ parameters.azureServiceConnection }}"
             echo "Agent    : ${{ parameters.agentPool }}"
             if [ "${{ parameters.location }}" != "uksouth" ]; then
@@ -139,6 +149,11 @@ jobs:
           script: |
             set -euo pipefail
             ROOT="$(Build.SourcesDirectory)"
+            REGION_FILE="${ROOT}/environments/region/${{ parameters.location }}/${{ parameters.envName }}.${{ parameters.stackName }}.tfvars"
+            if [ -f "${REGION_FILE}" ]; then
+              echo "Region var-file present (${REGION_FILE}) — skip seeding stack terraform.tfvars (pipeline uses -var-file)."
+              exit 0
+            fi
             if [ "${{ parameters.stackName }}" = "vwan" ]; then
               SRC="${ROOT}/environments/igmf/global.tfvars.example"
               DST="${ROOT}/config/vwan/terraform.tfvars"
@@ -228,7 +243,13 @@ jobs:
           workingDirectory: $(Build.SourcesDirectory)/$(stackDir)
           script: |
             set -euo pipefail
-            EXTRA_VARS=(-var="location=${{ parameters.location }}")
+            ROOT="$(Build.SourcesDirectory)"
+            EXTRA_VARS=()
+            VAR_FILE="${ROOT}/environments/region/${{ parameters.location }}/${{ parameters.envName }}.${{ parameters.stackName }}.tfvars"
+            if [ -f "${VAR_FILE}" ]; then
+              EXTRA_VARS+=(-var-file="${VAR_FILE}")
+            fi
+            EXTRA_VARS+=(-var="location=${{ parameters.location }}")
             if [ "${{ parameters.stackName }}" = "connectivity" ]; then
               EXTRA_VARS+=(-var="enable_hub01=$(resolvedEnableHub01)")
               EXTRA_VARS+=(-var="enable_hub02=$(resolvedEnableHub02)")
@@ -269,5 +290,12 @@ jobs:
           workingDirectory: $(Build.SourcesDirectory)/$(stackDir)
           script: |
             set -euo pipefail
-            # Full stack destroy — do not pass hub enable flags; do pass location
-            terraform destroy -input=false -auto-approve -var="location=${{ parameters.location }}"
+            ROOT="$(Build.SourcesDirectory)"
+            EXTRA_VARS=()
+            VAR_FILE="${ROOT}/environments/region/${{ parameters.location }}/${{ parameters.envName }}.${{ parameters.stackName }}.tfvars"
+            if [ -f "${VAR_FILE}" ]; then
+              EXTRA_VARS+=(-var-file="${VAR_FILE}")
+            fi
+            EXTRA_VARS+=(-var="location=${{ parameters.location }}")
+            # Full stack destroy — do not pass hub enable flags; do pass location (+ region var-file when present)
+            terraform destroy -input=false -auto-approve "${EXTRA_VARS[@]}"

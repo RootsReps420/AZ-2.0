@@ -1,0 +1,31 @@
+# igmf × uksouth × connectivity — values only (stack code: environments/igmf/connectivity)
+# Pipeline: -var-file=environments/region/uksouth/igmf.connectivity.tfvars
+#
+# Tags: resources use module.tags. IGMF sandbox mandatory keys below (not bank legacy).
+
+azure_subscription_id = "cc1ccb8d-18a1-4dca-aa5a-54607876c990" # IGMF sandbox subscription
+location              = "uksouth"
+environment           = "igmf"
+subscription_code     = "conn"
+
+# From config/vwan output vwan_id after igmf/vwan apply
+virtual_wan_id = "/subscriptions/cc1ccb8d-18a1-4dca-aa5a-54607876c990/resourceGroups/uks-conn-rsg-global/providers/Microsoft.Network/virtualWans/uks-conn-vwn-vdi-01"
+
+mandatory_tags = {
+  costCentre             = "IGMF-SANDBOX"
+  securityClassification = "Limited"
+  resourceOwner          = "dan.bowen@ignitemyfire.co.uk"
+  CMDB_AppID             = "IGMF001"
+}
+
+# Isolated tenant — int hub CIDRs are fine (no shared bank vWAN)
+hub01_address_prefix = "10.170.245.0/24"
+hub02_address_prefix = "10.170.246.0/24"
+
+dns_servers = ["168.63.129.16"] # Azure DNS — do NOT use bank 10.19.*
+
+# Phased hub deploy (defaults true). Pipeline -var overrides these when hubSelection is set.
+# enable_hub01 = true
+# enable_hub02 = true
+
+# expressroute_circuit_peering_id — leave unset for IGMF

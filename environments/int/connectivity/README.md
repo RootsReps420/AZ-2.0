@@ -10,6 +10,9 @@ Deploys (gated by `enable_hub01` / `enable_hub02`, both default `true`):
 
 Requires `virtual_wan_id` from `config/vwan`.
 
+**uksouth values:** [`../../region/uksouth/int.connectivity.tfvars`](../../region/uksouth/int.connectivity.tfvars)  
+Pipelines load that file automatically for `int` + `uksouth` + `connectivity`.
+
 Phased first deploy: Hub01 only (`enable_hub02=false`), then both true. Narrowing a flag plans destroy of that hub. One state key: `int/connectivity.tfstate`.
 
 ## Offline check
@@ -17,6 +20,9 @@ Phased first deploy: Hub01 only (`enable_hub02=false`), then both true. Narrowin
 ```bash
 terraform init -backend=false
 terraform validate
+terraform plan \
+  -var-file=../../region/uksouth/int.connectivity.tfvars \
+  -var=location=uksouth
 ```
 
 Do not `plan`/`apply` until subscription GUIDs + auth are ready.

@@ -1,26 +1,15 @@
-azure_subscription_id = "cc1ccb8d-18a1-4dca-aa5a-54607876c990" # IGMF sandbox subscription
-location              = "uksouth"
-environment           = "igmf"
-subscription_code     = "conn"
+# terraform.tfvars.example — igmf/connectivity
 
-# From config/vwan output vwan_id after igmf/vwan apply
-virtual_wan_id = "/subscriptions/cc1ccb8d-18a1-4dca-aa5a-54607876c990/resourceGroups/uks-conn-rsg-global/providers/Microsoft.Network/virtualWans/uks-conn-vwn-vdi-01"
+Deploy values for **uksouth** live in:
 
-mandatory_tags = {
-  costCentre             = "IGMF-SANDBOX"
-  securityClassification = "Limited"
-  resourceOwner          = "dan.bowen@ignitemyfire.co.uk"
-  CMDB_AppID             = "IGMF001"
-}
+[`../../region/uksouth/igmf.connectivity.tfvars`](../../region/uksouth/igmf.connectivity.tfvars)
 
-# Isolated tenant — int hub CIDRs are fine (no shared bank vWAN)
-hub01_address_prefix = "10.170.245.0/24"
-hub02_address_prefix = "10.170.246.0/24"
+AzDo IGMF pipelines: prefer the region var-file (loaded automatically when present).
+If `seedIgmfTfvars` still copies this example into the stack dir, keep it as a pointer only —
+or point seed at the region file in a later change.
 
-dns_servers = ["168.63.129.16"] # Azure DNS — do NOT use bank 10.19.*
-
-# Phased hub deploy (defaults true). Pipeline -var overrides these when hubSelection is set.
-# enable_hub01 = true
-# enable_hub02 = true
-
-# expressroute_circuit_peering_id — leave unset for IGMF
+```bash
+terraform plan \
+  -var-file=../../region/uksouth/igmf.connectivity.tfvars \
+  -var=location=uksouth
+```

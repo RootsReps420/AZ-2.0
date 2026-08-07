@@ -1,26 +1,9 @@
-azure_subscription_id = "00000000-0000-0000-0000-000000000000" # TODO(deploy): int connectivity subscription GUID
-location              = "uksouth"
-environment           = "int"
-subscription_code     = "conn"
-
-# From config/vwan output vwan_id
-virtual_wan_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/REPLACE/providers/Microsoft.Network/virtualWans/REPLACE"
-
-mandatory_tags = {
-  costCentre             = "CLL411S1XJ" # from legacy common_subscriptionTags
-  securityClassification = "Limited"
-  resourceOwner          = "Fletcher, Wayne (Colleague ID 0028929)"
-  CMDB_AppID             = "AL17611"
-}
-
-# Verbatim from legacy platform params/int/config.yml
-hub01_address_prefix = "10.170.245.0/24" # VERIFIED: net_hub_01_vnetAddressSpace
-hub02_address_prefix = "10.170.246.0/24" # Accepted TF default (ex-PPD Hub01); distinct from prd Hub02 10.218.68.0/22
-
-dns_servers          = ["10.19.96.1", "10.19.97.1"] # VERIFIED: p_dnsServers
-
-# Phased hub deploy (defaults true). Pipeline -var overrides these when hubSelection is set.
-# enable_hub01 = true
-# enable_hub02 = true
-
-# expressroute_circuit_peering_id = "/subscriptions/.../peerings/AzurePrivatePeering"
+# terraform.tfvars.example — int/connectivity
+#
+# uksouth deploy values:
+#   ../../region/uksouth/int.connectivity.tfvars
+#
+# AzDo loads that file via -var-file. Local:
+#   terraform plan -var-file=../../region/uksouth/int.connectivity.tfvars -var=location=uksouth
+#
+# This example is intentionally not a full var set (avoids duplicating region files).

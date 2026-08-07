@@ -13,6 +13,8 @@ crash.*.log
 *.tfvars
 *.tfvars.json
 !example.tfvars
+# Regional env×stack value files are committed config (placeholders / non-secret)
+!environments/region/**/*.tfvars
 
 # CLI config / plan output
 .terraformrc

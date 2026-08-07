@@ -91,6 +91,10 @@ Parameters on each: `envName`, `location`, `action` (`plan` \| `apply` \| `destr
 
 Stacks do **not** read each other’s remote state. Paste outputs (e.g. `vwan_id`, hub IDs, `law_id`) into the next stack’s region tfvars or examples by hand. Planned improvement: [plan 06](docs/plans/06-resolve-deploy-vars.md).
 
+### Tags (mandatory, one module)
+
+Every Azure resource is tagged **only** via [`modules/tags`](modules/tags) — see [Naming and tags](#naming-and-tags). Bank keys come from `mandatory_tags` in tfvars; workload is a **lane** (`platform` / `pers` / `mult` / `priv`) mapped inside the module to `vdi-*`.
+
 ---
 
 ## Purpose and topology
@@ -532,7 +536,7 @@ These keep running in AzDo against the Azure objects Terraform created. They nee
 
 **Output → next:** `vwan_id` → paste into `environments/region/<location>/<env>.connectivity.tfvars` as `virtual_wan_id`.
 
-Modules called: `naming`, `tags`, [`platform/vwan`](modules/platform/vwan).
+Modules called: `naming`, `tags` (lane `platform`), [`platform/vwan`](modules/platform/vwan).
 
 ```mermaid
 flowchart LR
@@ -602,7 +606,7 @@ prd hubs must stay distinct from int hubs on the shared `vwan` vWAN.
 `hub03_id` — N/A until `hub_spare` uncommented.  
 Firewall private IP under vWAN is **not** classic `.4` — always take the connectivity output.
 
-Modules called: `naming`, `tags`, `firewall-policy`, `hub-secured`, `hub-unsecured` (`hub-spare` = commented spare; not in apply).
+Modules called: `naming`, `tags` (lane `platform`), `firewall-policy`, `hub-secured`, `hub-unsecured` (`hub-spare` = commented spare; not in apply).
 
 ### Hub03 (spare) — config present, **not deployed**
 
@@ -705,7 +709,7 @@ Route table: `default-to-firewall` → Hub01 firewall private IP when IP is pass
 
 **Outputs → next:** `law_id`, `agents_subnet_id`, `vnet_id`, `alert_action_group_ids`, `alert_uami_id` / `alert_uami_principal_id`.
 
-Modules called: `naming`, `tags`, `management`, `spoke-pers` (+ alert/APR/UAMI resources in root).
+Modules called: `naming`, `tags` (lane `platform`), `management`, `spoke-pers` (+ alert/APR/UAMI resources in root).
 
 ---
 
@@ -736,7 +740,7 @@ DNS on all lab VNets: `10.19.96.1`, `10.19.97.1`.
 
 **Outputs → next:** VNet ID maps, FSLogix STA names, lab KV IDs, PERS blob STA names, CMK identity IDs — see [Wiring map](#wiring-map-outputs-to-inputs). No file-share ID outputs (share names stay inside the FSLogix module; alert scopes are built in mgmt tfvars).
 
-Modules called: `naming`, `tags`, `spoke-pers`, `spoke-msh`, `storage-fslogix`, `storage-blob`, `keyvault`.
+Modules called: `naming`, `tags` (`tags_pers` / `tags_mult` / `tags_priv`), `spoke-pers`, `spoke-msh`, `storage-fslogix`, `storage-blob`, `keyvault`.
 
 ---
 
@@ -764,9 +768,11 @@ Modules called: `naming`, `tags`, `spoke-pers`, `spoke-msh`, `storage-fslogix`, 
 | MSH DCR/DCE/tables | When `law_id` set (`modules/platform/dcr-msh`) |
 | WVD Power On Off RAs | When principal set |
 
+**Tags:** `tags_mult` → MSH objects + shared KV/gallery; `tags_pers` → PERS objects; `tags_priv` → PRIV objects ([Naming and tags](#naming-and-tags)).
+
 **Outputs → next:** MSH `registration_tokens` / `hostpool_ids`; PERS `pers_registration_tokens` / `pers_hostpool_ids`; gallery + image definition names; `msh_dcr_ids`; `keyvault_id`.
 
-Modules called: `naming`, `tags`, `hostpool`, `workspace`, `scalingplan`, `gallery`, `image-definition`, `keyvault`, `dcr-msh` (+ WVD role assignments in root).
+Modules called: `naming`, `tags_mult` / `tags_pers` / `tags_priv`, `hostpool`, `workspace`, `scalingplan`, `gallery`, `image-definition`, `keyvault`, `dcr-msh` (+ WVD role assignments in root).
 
 Full pool / gallery catalogues: [Azure Virtual Desktop objects](#azure-virtual-desktop-objects).
 
@@ -857,13 +863,15 @@ Every environment stack is thin glue: it calls these modules with env-specific m
 ### Which stack calls which modules
 
 ```text
-vwan           → naming, tags, platform/vwan
-connectivity   → naming, tags, firewall-policy, hub-secured, hub-unsecured
+vwan           → naming, tags (platform), platform/vwan
+connectivity   → naming, tags (platform), firewall-policy, hub-secured, hub-unsecured
                  (hub-spare = commented spare; not in apply)
-mgmt           → naming, tags, management, spoke-pers (+ alert/APR/UAMI resources in root)
-labs           → naming, tags, spoke-pers, spoke-msh, storage-fslogix, storage-blob, keyvault
-avd            → naming, tags, hostpool, workspace, scalingplan, gallery, image-definition,
-                 keyvault, dcr-msh (+ WVD role assignments in root)
+mgmt           → naming, tags (platform), management, spoke-pers (+ alert/APR/UAMI in root)
+labs           → naming, tags_pers / tags_mult / tags_priv, spoke-pers, spoke-msh,
+                 storage-fslogix, storage-blob, keyvault
+avd            → naming, tags_mult / tags_pers / tags_priv, hostpool, workspace, scalingplan,
+                 gallery, image-definition, keyvault, dcr-msh (+ WVD RAs in root)
+                 # tags_mult: MSH + shared KV/gallery; tags_pers: PERS; tags_priv: PRIV
 ```
 
 ---
@@ -934,27 +942,62 @@ Hub connection names for spokes are intentional literals: `vhc-{spoke}-hub01` / 
 
 ### `modules/tags`
 
-**Sole source of tags** for every Azure resource in this repo. Stacks call the module and pass `tags = module.tags.tags` (or `tags_mult` / `tags_pers` / `tags_priv`). No optional extras; resource modules never invent keys.
+**Sole source of tags** for every Azure resource in this repo. Detail: [`modules/tags/README.md`](modules/tags/README.md) · checklist: [`docs/variable-set.md`](docs/variable-set.md).
+
+```mermaid
+flowchart LR
+  TF["tfvars mandatory_tags"] --> M["modules/tags"]
+  Lane["lane: platform|pers|mult|priv"] --> M
+  Env["environment + location"] --> M
+  M -->|"tags map"| Res["Azure resources"]
+```
+
+Rules:
+
+1. Stack root calls `modules/tags` (once, or `tags_mult` / `tags_pers` / `tags_priv` when a stack has multiple lanes).
+2. Every resource gets `tags = module.tags*.tags`.
+3. Resource modules only **forward** that map — they never invent keys or optional extras.
+4. Rename a workload string or add a key in **one place**: [`modules/tags`](modules/tags).
 
 Mandatory catalog on every resource:
 
 | Key | Source |
 |---|---|
-| `costCentre`, `securityClassification`, `resourceOwner`, `CMDB_AppID` | tfvars → `mandatory` |
-| `environment`, `region` | stack vars via module |
+| `costCentre` | tfvars → `mandatory` |
+| `securityClassification` | tfvars → `mandatory` |
+| `resourceOwner` | tfvars → `mandatory` |
+| `CMDB_AppID` | tfvars → `mandatory` |
+| `environment` | stack `var.environment` via module |
+| `region` | stack `var.location` via module |
 | `workload` | lane → module map (`vdi-*`) |
-| `managed-by`, `repo` | module constants (`terraform`, `vdi-terraform`) |
+| `managed-by` | module constant `terraform` |
+| `repo` | module constant `vdi-terraform` |
 
-Bank int/prd values: `430034` / `Limited` / `VirtualTeam` / `AL17611`. IGMF uses sandbox keys.
+Bank int/prd `mandatory_tags`: `430034` / `Limited` / `VirtualTeam` / `AL17611`. IGMF uses sandbox keys (`IGMF-SANDBOX` / `IGMF001` / …).
 
 Workload lanes (caller passes the short key; module owns the Azure string):
 
 | Lane | Tag value | Used by |
 |---|---|---|
-| `platform` | `vdi-platform` | vwan, connectivity, mgmt |
-| `pers` | `vdi-pers` | labs PERS; avd PERS objects |
-| `mult` | `vdi-mult` | labs MSH; avd MSH + shared KV/gallery |
-| `priv` | `vdi-priv` | labs PRIV; avd PRIV objects |
+| `platform` | `vdi-platform` | `config/vwan`, connectivity, mgmt |
+| `pers` | `vdi-pers` | labs PERS; **avd** PERS RG / workspace / pools / scaling |
+| `mult` | `vdi-mult` | labs MSH; **avd** MSH + shared KV / gallery / image defs |
+| `priv` | `vdi-priv` | labs PRIV; **avd** PRIV RG / workspace / pools / scaling |
+
+Example (vwan / connectivity / mgmt):
+
+```hcl
+module "tags" {
+  source = "../../modules/tags" # path varies by root
+
+  workload    = "platform" # lane — not "vdi-platform"
+  environment = var.environment
+  region      = var.location
+  mandatory   = var.mandatory_tags
+}
+
+# tags = module.tags.tags
+```
 
 ---
 
@@ -1399,7 +1442,9 @@ Offline until creds: `terraform init -backend=false` + `terraform validate` only
 | Alerts | Deploy both envs; **enabled only in prd** |
 | DNS (bank) | `10.19.96.1`, `10.19.97.1` |
 | DNS (igmf) | `168.63.129.16` (Azure DNS) |
-| Mandatory tags (int/prd) | `430034` / `Limited` / `VirtualTeam` / `AL17611` |
+| Mandatory tags (int/prd) | `430034` / `Limited` / `VirtualTeam` / `AL17611` (via `modules/tags`) |
+| Tag source | **Only** [`modules/tags`](modules/tags) — no optional extras |
+| Workload lanes | `platform` → vwan/conn/mgmt; `pers`/`mult`/`priv` → labs + avd object groups |
 | Still open by design | Hub02 VPN peer; FWP allow rules; TDA naming board; deploy-time GUIDs; Hub03 enable when needed; PRIV avd outputs; italy/spain CIDRs; plan 06 resolver |
 
 ---
@@ -1411,7 +1456,7 @@ Companion to [Module catalogue](#module-catalogue) (what each module *is*). This
 | Module | Primary outputs |
 |---|---|
 | `modules/naming` | `name`, `abbreviation`, `region_short` |
-| `modules/tags` | `tags` |
+| `modules/tags` | `tags` — full mandatory map (bank + platform); sole tag source |
 | `modules/platform/vwan` | `vwan_id`, `vwan_name` |
 | `modules/platform/hub-secured` | `hub_id`, `firewall_private_ip`, `firewall_id`, `express_route_gateway_id` |
 | `modules/platform/hub-unsecured` | `hub_id`, `hub_name`, `vpn_gateway_id` |

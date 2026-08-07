@@ -291,7 +291,7 @@ scripts/                             # Local module scaffold only (not AzDo)
 legacy/                              # Local Azure 1.0 clones (gitignored)
 ```
 
-Ignore for cutover: `environments/uksouth/{dev,prod}` (old greenfield demos). Live env segment is **`prd`**, not `prod`. Leftover `environments/<env>/{italynorth,spaincentral}/` README stubs are unused — pipelines use stack roots + region tfvars instead.
+Ignore for cutover: leftover `environments/<env>/{italynorth,spaincentral}/` README stubs (unused — pipelines use stack roots + region tfvars). Live env segment is **`prd`**, not `prod`.
 
 ---
 
@@ -739,7 +739,7 @@ Local PowerShell only — **not** invoked by AzDo. Use these when scaffolding ne
 
 Creates `main.tf`, `variables.tf`, `outputs.tf`, `versions.tf`, `README.md` (with naming/tags integration examples), `examples/basic/`, and `tests/`. Fill in real resources, then wire from an `environments/<env>/...` stack.
 
-**Not for cutover:** [`modules/core/demo-module`](modules/core/demo-module), [`modules/core/scaffold-smoke`](modules/core/scaffold-smoke), and greenfield `environments/uksouth/{dev,prod}` stubs — ignore for bank deploy.
+**Not for cutover:** [`modules/core/demo-module`](modules/core/demo-module) and [`modules/core/scaffold-smoke`](modules/core/scaffold-smoke) — ignore for bank deploy.
 
 ### Usage examples
 

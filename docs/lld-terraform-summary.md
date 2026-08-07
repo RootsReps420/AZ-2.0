@@ -43,9 +43,8 @@ vdi-terraform/
 ├── config/           # shared platform config (not an env)
 │   └── vwan/         # Virtual WAN (once)
 ├── environments/     # env-scoped config — call modules
-│   ├── uksouth/{dev,prod}/
-│   ├── italynorth/{dev,prod}/
-│   └── spaincentral/{dev,prod}/
+│   ├── int|prd|igmf/{connectivity,mgmt,labs,avd}/
+│   └── region/{uksouth,italynorth,spaincentral}/
 ├── docs/
 ├── pipelines/
 ├── scripts/
@@ -54,7 +53,7 @@ vdi-terraform/
 
 **Rule:** modules hold logic; environments hold variable values + module calls.
 
-> **Later change (migration plan 02):** for the Azure 1.0 cutover, live targets are `environments/{int,prod}/{connectivity,mgmt,labs,avd}` (one stack per Azure subscription scope). The LLD’s `uksouth/{dev,prod}` mega-roots still exist as greenfield demos but are **superseded** for cutover. See [../README.md](../README.md).
+> **Later change (migration plan 02):** for the Azure 1.0 cutover, live targets are `environments/{int,prd}/{connectivity,mgmt,labs,avd}` plus `environments/region/<location>/…` values. The LLD’s old `uksouth/{dev,prod}` mega-roots were removed. See [../README.md](../README.md).
 
 ---
 

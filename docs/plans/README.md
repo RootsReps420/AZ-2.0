@@ -13,6 +13,7 @@ live in the repo (the live working copies are authored in Cursor's plan mode).
 | 03 | [Cursor account handoff](03-cursor-handoff.md) | Local only (gitignored) | Context, locked decisions, prompt history, and starter message for continuing work on another Cursor account. |
 | 04 | [Gap analysis — legacy vs TF](04-gap-analysis-legacy-vs-tf.md) | Complete | Source-verified parity; C01–C20 + Wave D + labCorePriv done. Deploy-time GUIDs remain tfvars. |
 | 05 | Sandbox deploy runthrough (`05-sandbox-deploy-runthrough.md`) | Local only (gitignored) | int (DT) first-deploy walkthrough — kept on disk, not pushed. |
+| 06 | [Resolve deploy vars (pre-req)](06-resolve-deploy-vars.md) | Planned | Replace example-tfvars seeding with a pipeline pre-req that resolves subscription / vWAN (and later hub/LAW) IDs into a generated var-file; keep CIDRs/tags in `environments/region/`. Pilot: IGMF uksouth connectivity. |
 
 ## Conventions
 

@@ -58,7 +58,7 @@ Stack code stays in `environments/<env>/<stack>/`. Legacy stub dirs under `envir
 
 All support `action`: `plan` \| `apply` \| `destroy`, `envName`: `int` \| `prd` \| `igmf`, and `location`: `uksouth` \| `italynorth` \| `spaincentral`.
 
-When **`envName=igmf`** and **`location=uksouth`**: service connection `SC-IGMF-VDI-TF-01`, hosted pool, variable group `tf-backend-igmf`, and **seed** `*.tfvars.example` → `terraform.tfvars` (including `vwan` from `environments/igmf/global.tfvars.example`). Bank envs (`int`/`prd`) never seed. IGMF seed is skipped for non-uksouth locations (no example tfvars in stubs).
+When **`envName=igmf`** and **`location=uksouth`**: service connection `SC-IGMF-VDI-TF-01`, hosted pool, variable group `tf-backend-igmf`. Seeding `*.tfvars.example` → `terraform.tfvars` runs **only if** no matching `environments/region/.../<env>.<stack>.tfvars` exists (connectivity skips seed; vwan still uses [`environments/igmf/global.tfvars.example`](../environments/igmf/global.tfvars.example)). Bank envs (`int`/`prd`) never seed. IGMF seed is skipped for non-uksouth locations.
 
 ### Catch-all / convenience
 

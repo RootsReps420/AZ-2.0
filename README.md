@@ -1,33 +1,35 @@
 # VDI Terraform — as-built design
 
 **Audience:** engineers new to this monorepo.  
-**Status:** Reflects code on `main` after legacy-to-TF parity (C01-C20 + Wave D + labCorePriv). **Hub03** = spare CIDR + `hub-spare` module in code — **not deployed** until uncommented.  
-**Environments in scope:** `int` (DT / dev test), `prd` (production), and sandbox `igmf` (not bank cutover).  
-**Region:** `uksouth` is live. Pipeline `location` also accepts `italynorth` / `spaincentral` (selectable; AzDo SC/backend + hub CIDRs still placeholders — not deploy-ready).
+**Status:** Reflects code on `main` after legacy-to-TF parity (C01–C20 + Wave D + labCorePriv). **Hub03** = spare CIDR + `hub-spare` module in code — **not deployed** until uncommented.  
+**Environments:** `int` (DT / dev test), `prd` (production), sandbox `igmf` (not bank cutover). Live env folder is **`prd`**, never `prod`.  
+**Regions:** `uksouth` is the live path. Pipeline `location` also accepts `italynorth` / `spaincentral` (selectable; SC/backend + hub CIDRs still placeholders — **not deploy-ready**).
 
-This is the practical LLD for **what Terraform actually deploys today**. Companion notes:
+This README is the practical LLD for **what Terraform deploys today**, how the folders fit together, and which AzDo pipelines to queue. Deeper companions:
 
 | Doc | Role |
 |---|---|
+| [pipelines/README.md](pipelines/README.md) | Named pipelines, location, state keys, var-files, hubSelection |
+| [environments/region/README.md](environments/region/README.md) | Per-region value files (`*.tfvars`) |
+| [config/README.md](config/README.md) | Shared roots (`config/vwan`) |
 | [docs/address-plan-hubs.md](docs/address-plan-hubs.md) | Hub CIDR decisions / rejects |
 | [docs/variable-set.md](docs/variable-set.md) | Tags / DNS / identity checklist |
-| [docs/subscription-inventory.md](docs/subscription-inventory.md) | SPNs, app IDs, known gallery GUIDs — may still say TF env `prod`; live folder is **`prd`** |
-| [docs/lld-terraform-summary.md](docs/lld-terraform-summary.md) | LLD extract (some wording predates default-to-firewall / `prd` rename) |
-| [docs/legacy-live-inventory.md](docs/legacy-live-inventory.md) · [docs/legacy-dead-code.md](docs/legacy-dead-code.md) · [docs/legacy-pipeline-fate.md](docs/legacy-pipeline-fate.md) | Phase 0 inventory |
-| [docs/legacy-to-tda-rename-map.md](docs/legacy-to-tda-rename-map.md) · [docs/packer-tda-rename-checklist.md](docs/packer-tda-rename-checklist.md) | Naming / Packer rename helpers |
-| [docs/plans/04-gap-analysis-legacy-vs-tf.md](docs/plans/04-gap-analysis-legacy-vs-tf.md) | Parity execution status (complete) |
+| [docs/subscription-inventory.md](docs/subscription-inventory.md) | SPNs, app IDs, gallery GUIDs (may still say `prod`; folder is **`prd`**) |
+| [docs/lld-terraform-summary.md](docs/lld-terraform-summary.md) | Shorter LLD extract (some wording may lag this README) |
+| [docs/plans/README.md](docs/plans/README.md) | Plan index (01–06) |
+| [docs/plans/04-gap-analysis-legacy-vs-tf.md](docs/plans/04-gap-analysis-legacy-vs-tf.md) | Parity status (complete) |
+| [docs/plans/06-resolve-deploy-vars.md](docs/plans/06-resolve-deploy-vars.md) | Planned: replace IGMF example-seeding with a resolve pre-req |
 | [docs/plans/02-azure-1.0-to-terraform-migration.md](docs/plans/02-azure-1.0-to-terraform-migration.md) | Migration context |
-| [pipelines/README.md](pipelines/README.md) | Location / state keys / regional var-files |
-| [environments/region/README.md](environments/region/README.md) | Per-region value files |
+| [docs/legacy-live-inventory.md](docs/legacy-live-inventory.md) · [legacy-dead-code](docs/legacy-dead-code.md) · [legacy-pipeline-fate](docs/legacy-pipeline-fate.md) | Phase 0 inventory |
+| [docs/legacy-to-tda-rename-map.md](docs/legacy-to-tda-rename-map.md) · [packer-tda-rename-checklist](docs/packer-tda-rename-checklist.md) | Naming / Packer helpers |
 
-Local-only (gitignored — stay on disk, not pushed): `docs/plans/03-cursor-handoff.md`, `docs/plans/05-sandbox-deploy-runthrough.md`.
-
-**IGMF sandbox** (`environments/igmf/{connectivity,mgmt,labs,avd}` via the **named** pipelines with `envName=igmf`): disconnected ignitemyfire.co.uk smoke tests — **not** bank cutover. Bank live targets remain `int` / `prd`.
+Local-only (gitignored — on disk, not pushed): `docs/plans/03-cursor-handoff.md`, `docs/plans/05-sandbox-deploy-runthrough.md`.
 
 **Hard rule:** session-host VMs are **not** Terraform. Terraform builds network, platform services, storage, and AVD *objects*. PowerShell / AzDo places VMs and users.
 
 ## Table of contents
 
+- [Start here](#start-here)
 - [Purpose and topology](#purpose-and-topology)
 - [How the repo fits together](#how-the-repo-fits-together)
 - [Pipeline → stack map](#pipeline--stack-map)
@@ -49,6 +51,45 @@ Local-only (gitignored — stay on disk, not pushed): `docs/plans/03-cursor-hand
 - [Deploy checklist](#deploy-checklist)
 - [One-page cheat sheet](#one-page-cheat-sheet)
 - [Module outputs quick-ref](#module-outputs-quick-ref)
+
+---
+
+## Start here
+
+### Mental model (three layers)
+
+| Layer | Path | What you edit |
+|---|---|---|
+| **Modules** | `modules/**` | Reusable resource logic — never queued by AzDo alone |
+| **Stack roots** | `config/vwan`, `environments/<env>/{connectivity,mgmt,labs,avd}` | Thin Terraform workspaces the pipeline `cd`s into |
+| **Regional values** | `environments/region/<location>/<env>.<stack>.tfvars` | Subscription IDs, CIDRs, tags, DNS — passed as `-var-file` |
+
+`<env>` = `int` \| `prd` \| `igmf`. Shared Virtual WAN lives under **`config/vwan`**, not under an env folder.
+
+### What to queue
+
+| Order | Pipeline | Stack |
+|---|---|---|
+| 1 | [`tf-vWAN-Deployment`](pipelines/tf-vWAN-Deployment.yml) | Virtual WAN |
+| 2 | [`tf-Hub-Deployment`](pipelines/tf-Hub-Deployment.yml) | connectivity (Hub01 / Hub02) |
+| 3 | [`tf-Hub-Management-Deployment`](pipelines/tf-Hub-Management-Deployment.yml) | mgmt |
+| 4 | [`tf-AVD-Labs-Deployment`](pipelines/tf-AVD-Labs-Deployment.yml) | labs |
+| 5 | [`tf-AVD-Hostpool-Deployment`](pipelines/tf-AVD-Hostpool-Deployment.yml) | avd |
+
+Parameters on each: `envName`, `location`, `action` (`plan` \| `apply` \| `destroy`). Hub also takes `hubSelection`.
+
+### Deploy readiness (today)
+
+| Target | Status |
+|---|---|
+| **igmf × uksouth × connectivity** | Deploy-ready — region tfvars filled (subscription, `virtual_wan_id`, hub CIDRs, Azure DNS) |
+| **igmf × uksouth × vwan / mgmt / labs / avd** | Stack code + examples; no region tfvars yet — pipeline **seeds** `*.tfvars.example` when no region file |
+| **int / prd × uksouth × connectivity** | Region tfvars present; **subscription / `virtual_wan_id` still placeholders** — fill before bank apply |
+| **italynorth / spaincentral** | Pipeline selectable; hub CIDRs blank + placeholder SC — **do not apply** until address plan + identity exist |
+
+**IGMF** = disconnected ignitemyfire.co.uk sandbox via named pipelines with `envName=igmf`. **Bank cutover** = `int` then `prd`.
+
+Stacks do **not** read each other’s remote state. Paste outputs (e.g. `vwan_id`, hub IDs, `law_id`) into the next stack’s region tfvars or examples by hand. Planned improvement: [plan 06](docs/plans/06-resolve-deploy-vars.md).
 
 ---
 
@@ -283,15 +324,16 @@ environments/
     {connectivity,mgmt,labs,avd}/    # Stack roots (main.tf → modules)
   region/
     uksouth|italynorth|spaincentral/
-      <env>.<stack>.tfvars           # Per region × env × stack values
-                                     # connectivity files exist for all 3×3 today
+      <env>.<stack>.tfvars           # Values only — connectivity for all 3×3 today
 modules/                             # Reusable bricks
-pipelines/                           # Named AzDo entry points + templates
+pipelines/                           # Named AzDo entry points + templates/
 scripts/                             # Local module scaffold only (not AzDo)
-legacy/                              # Local Azure 1.0 clones (gitignored)
+docs/                                # Address plan, inventory, migration plans
+legacy/                              # Local Azure 1.0 clones (gitignored — stay on disk)
 ```
 
-Ignore for cutover: leftover `environments/<env>/{italynorth,spaincentral}/` README stubs (unused — pipelines use stack roots + region tfvars). Live env segment is **`prd`**, not `prod`.
+**Do not use:** leftover `environments/<env>/{italynorth,spaincentral}/` folders (README stubs only). Pipelines always work in the stack root above and load values from `environments/region/…`.  
+**Env folder name:** bank production is **`prd`**, not `prod`. Old greenfield `environments/uksouth/{dev,prod}` trees were removed.
 
 ---
 
@@ -382,9 +424,11 @@ flowchart TB
 **Connectivity packages today:** all three locations × `int` / `prd` / `igmf` have `*.connectivity.tfvars`.  
 - **uksouth** — filled (IGMF deploy-ready; int/prd still need real subscription / vWAN IDs).  
 - **italynorth / spaincentral** — tags + placeholders; hub CIDRs blank (`""`) until address plan — do not apply yet.  
-- **mgmt / labs / avd / vwan** — no region tfvars yet (IGMF uksouth can still seed from stack `*.tfvars.example`).
+- **mgmt / labs / avd / vwan** — no region tfvars yet.
 
-See [`environments/region/README.md`](environments/region/README.md).
+**IGMF seeding:** when `envName=igmf` + `location=uksouth` and **no** matching region file exists, the job copies `*.tfvars.example` → `terraform.tfvars` (vwan uses [`environments/igmf/global.tfvars.example`](environments/igmf/global.tfvars.example)). If a region file **is** present (e.g. connectivity), seeding is **skipped** and the pipeline uses `-var-file` only. Bank envs never seed.
+
+See [`environments/region/README.md`](environments/region/README.md) and [`pipelines/README.md`](pipelines/README.md).
 
 ### How a release run works
 
@@ -474,7 +518,7 @@ These keep running in AzDo against the Azure objects Terraform created. They nee
 | **Pipeline** | [`tf-vWAN-Deployment.yml`](pipelines/tf-vWAN-Deployment.yml) |
 | **Working directory** | [`config/vwan`](config/vwan) |
 | **State key** | `{env}/vwan.tfstate` (uksouth) or `{env}/{location}/vwan.tfstate` |
-| **Region tfvars** | None yet — IGMF uksouth seeds from [`environments/igmf/global.tfvars.example`](environments/igmf/global.tfvars.example) |
+| **Region tfvars** | None yet — IGMF uksouth **seeds** from [`environments/igmf/global.tfvars.example`](environments/igmf/global.tfvars.example) when no `region/.../igmf.vwan.tfvars` exists |
 | **Depends on** | Nothing (first apply) |
 | **Feeds** | connectivity `virtual_wan_id` |
 | **Out of this pipeline** | Hubs, firewall, spokes, AVD — all later stacks |
@@ -927,13 +971,20 @@ provider "azurerm" {
 # avd also declares: provider "azapi" {}
 ```
 
-State keys match [`pipelines/templates/terraform-stack.yml`](pipelines/templates/terraform-stack.yml): **`{env}/{stack}.tfstate`**
+State keys are set by [`pipelines/templates/terraform-stack.yml`](pipelines/templates/terraform-stack.yml):
+
+| Location | State key pattern |
+|---|---|
+| `uksouth` (default) | `{env}/{stack}.tfstate` |
+| `italynorth` / `spaincentral` | `{env}/{location}/{stack}.tfstate` |
 
 | Stack | Example key (uksouth) | Example key (italynorth) |
 |---|---|---|
 | `vwan` | `int/vwan.tfstate` | `int/italynorth/vwan.tfstate` |
 | connectivity | `int/connectivity.tfstate` | `int/italynorth/connectivity.tfstate` |
 | mgmt / labs / avd | `{env}/mgmt.tfstate` etc. | `{env}/{location}/mgmt.tfstate` etc. |
+
+If you still have a blob named `{env}/_global.tfstate`, rename it to `{env}/vwan.tfstate` before the next vWAN apply.
 
 Each stack’s `azure_subscription_id` is the **subscription that owns that stack’s resources**. Legacy estate is multi-subscription (hub / mgmt / avd / lab). Cutover preserves that: one provider context per root.
 
@@ -946,15 +997,23 @@ Each stack’s `azure_subscription_id` is the **subscription that owns that stac
 | Env | Hub01 (secured) | Hub02 (unsecured) | Hub03 (spare) |
 |---|---|---|---|
 | **int** | `10.170.245.0/24` | `10.170.246.0/24` | not in env |
+| **igmf** | same as int (isolated tenant) | same | not in env |
 | **prd** | `10.218.64.0/22` | `10.218.68.0/22` | `10.218.72.0/22` reserved — **not deployed** |
+
+Prefixes for live applies come from `environments/region/<location>/<env>.connectivity.tfvars` (not hardcoded in `main.tf`).
 
 Under Virtual WAN, each hub CIDR is the virtual hub `address_prefix` — not a classic VNet with `AzureFirewallSubnet` / `GatewaySubnet` children. Firewall and ER/VPN attach as **hub SKUs** on Hub01/Hub02 only.
 
 **Hub03 traffic:** none — no Azure resource until uncommented. When enabled later, mesh-only until spokes/gateways attach. Full enable steps: [Deploy: Connectivity](#deploy-connectivity).
 
-### Corporate DNS (everywhere)
+### Corporate DNS
 
-`10.19.96.1`, `10.19.97.1`
+| Env | DNS servers | Source |
+|---|---|---|
+| **int / prd** | `10.19.96.1`, `10.19.97.1` | Bank corporate DNS (region connectivity tfvars) |
+| **igmf** | `168.63.129.16` | Azure DNS — do **not** use bank `10.19.*` |
+
+Firewall policy DNS proxy uses the stack’s `dns_servers` var (from region tfvars when present).
 
 ### Traffic paths
 
@@ -1311,9 +1370,10 @@ Offline until creds: `terraform init -backend=false` + `terraform validate` only
 | PS owns | Session hosts, token consume, AG user RBAC, Packer versions, agent VMSS, FSLogix profile ops, DCR associations |
 | Named pipelines | `tf-vWAN` · `tf-Hub` · `tf-Hub-Management` · `tf-AVD-Labs` · `tf-AVD-Hostpool` |
 | First env | `int` (sandbox: `igmf`) |
-| Prod env folder | `prd` |
+| Prod env folder | `prd` (not `prod`) |
 | vWAN root | `config/vwan` (not under `environments/`) |
-| Region values | `environments/region/<location>/<env>.<stack>.tfvars` (`-var-file`) |
+| Region values | `environments/region/<location>/<env>.<stack>.tfvars` (`-var-file` when present) |
+| IGMF seed | Only when no region file; connectivity uksouth uses region tfvars (no seed) |
 | Location (pipeline) | `uksouth` live; `italynorth` / `spaincentral` selectable but not deploy-ready |
 | Apply order | vWAN → Hub → Management → Labs → Hostpool |
 | State keys | `{env}/{stack}.tfstate` (uksouth); `{env}/{location}/{stack}.tfstate` (other) |
@@ -1328,9 +1388,10 @@ Offline until creds: `terraform init -backend=false` + `terraform validate` only
 | PERS blobs | 12 STAs; no CMK |
 | Lab KVs | **15** (2+12+1) |
 | Alerts | Deploy both envs; **enabled only in prd** |
-| DNS (bank) | `10.19.96.1`, `10.19.97.1` (IGMF: Azure DNS `168.63.129.16`) |
+| DNS (bank) | `10.19.96.1`, `10.19.97.1` |
+| DNS (igmf) | `168.63.129.16` (Azure DNS) |
 | Mandatory tags (int/prd) | `430034` / `Limited` / `VirtualTeam` / `AL17611` |
-| Still open by design | Hub02 VPN peer; FWP allow rules; TDA naming board; deploy-time GUIDs; Hub03 enable when needed; PRIV avd outputs; italy/spain CIDRs |
+| Still open by design | Hub02 VPN peer; FWP allow rules; TDA naming board; deploy-time GUIDs; Hub03 enable when needed; PRIV avd outputs; italy/spain CIDRs; plan 06 resolver |
 
 ---
 

@@ -17,25 +17,30 @@ git push origin main
 git push igmf main
 ```
 
-## Pipelines (IGMF AzDo only)
+## Pipelines
 
-| File | Role |
+Prefer the **named** entry points with `envName=igmf` (same as bank):
+
+| File | Stack |
 |---|---|
-| [`pipelines/tf-igmf-release.yml`](../../pipelines/tf-igmf-release.yml) | Parameterised: `vwan` | `connectivity` \| `mgmt` \| `labs` \| `avd` + plan/apply/destroy |
-| [`pipelines/tf-igmf-connectivity.yml`](../../pipelines/tf-igmf-connectivity.yml) | Convenience plan→apply connectivity |
+| [`tf-vWAN-Deployment.yml`](../../pipelines/tf-vWAN-Deployment.yml) | vwan → `config/vwan` |
+| [`tf-Hub-Deployment.yml`](../../pipelines/tf-Hub-Deployment.yml) | connectivity |
+| [`tf-Hub-Management-Deployment.yml`](../../pipelines/tf-Hub-Management-Deployment.yml) | mgmt |
+| [`tf-AVD-Labs-Deployment.yml`](../../pipelines/tf-AVD-Labs-Deployment.yml) | labs |
+| [`tf-AVD-Hostpool-Deployment.yml`](../../pipelines/tf-AVD-Hostpool-Deployment.yml) | avd |
 
-AzDo pipeline name: **Azure-2.0**. Branch: **`main`**.
+Convenience alternatives: [`tf-igmf-release.yml`](../../pipelines/tf-igmf-release.yml), [`tf-igmf-connectivity.yml`](../../pipelines/tf-igmf-connectivity.yml).
 
-| Param | Value |
+| Param | uksouth value |
 |---|---|
 | Service connection | `SC-IGMF-VDI-TF-01` |
 | Agent pool | `Azure Pipelines` (Microsoft-hosted) |
 | Variable group | `tf-backend-igmf` |
-| State key prefix | `igmf/<stack>.tfstate` |
+| State key | `igmf/<stack>.tfstate` |
 
-`seedIgmfTfvars: true` copies each stack’s `terraform.tfvars.example` onto the agent — put real hub/LAW IDs in the **committed examples**.
+**Values:** connectivity uses [`environments/region/uksouth/igmf.connectivity.tfvars`](../region/uksouth/igmf.connectivity.tfvars) (`-var-file`; seeding skipped). Other stacks still seed from `*.tfvars.example` (vwan from [`global.tfvars.example`](global.tfvars.example)) until region files exist.
 
-Bank `tf-release.yml` is unchanged.
+Full LLD: [../../README.md](../../README.md).
 
 ## Apply order / phases
 
@@ -52,12 +57,12 @@ Bank `tf-release.yml` is unchanged.
 
 | From | Output | Paste into | Variable |
 |---|---|---|---|
-| `vwan` | `vwan_id` | `connectivity/terraform.tfvars.example` | `virtual_wan_id` (already set) |
-| connectivity | `hub01_id` | `mgmt` + `labs` examples | `hub01_id` |
-| connectivity | `hub01_firewall_private_ip` | `mgmt` + `labs` examples | `hub01_firewall_private_ip` |
-| connectivity | `hub02_id` | `labs` example | `hub02_id` |
-| mgmt | `law_id` | `labs` + `avd` examples (optional) | `law_id` |
-| mgmt | `agents_subnet_id` | `labs` example | `agents_subnet_id` |
+| `vwan` | `vwan_id` | `region/<loc>/igmf.connectivity.tfvars` (already set for uksouth) | `virtual_wan_id` |
+| connectivity | `hub01_id` | mgmt + labs examples (or future region tfvars) | `hub01_id` |
+| connectivity | `hub01_firewall_private_ip` | mgmt + labs examples | `hub01_firewall_private_ip` |
+| connectivity | `hub02_id` | labs example | `hub02_id` |
+| mgmt | `law_id` | labs + avd examples (optional) | `law_id` |
+| mgmt | `agents_subnet_id` | labs example | `agents_subnet_id` |
 
 Subscription (all stacks): `cc1ccb8d-18a1-4dca-aa5a-54607876c990`.
 

@@ -1,0 +1,31 @@
+# Shared env → AzDo identity / backend mapping for named + catch-all pipelines.
+# When envName=igmf: load tf-backend-igmf group, hosted pool, IGMF SC.
+# Bank (int/prd): SC + private agent; backend vars expected from pipeline/library linkage.
+
+parameters:
+  - name: envName
+    type: string
+
+variables:
+  - ${{ if eq(parameters.envName, 'igmf') }}:
+      - group: tf-backend-igmf
+  - name: azureServiceConnection
+    ${{ if eq(parameters.envName, 'int') }}:
+      value: SC-R-VDI-INT-C-01
+    ${{ if eq(parameters.envName, 'prd') }}:
+      value: SC-P-VDI-PRD-C-01
+    ${{ if eq(parameters.envName, 'igmf') }}:
+      value: SC-IGMF-VDI-TF-01
+  - name: agentPool
+    ${{ if eq(parameters.envName, 'int') }}:
+      value: uks-int-vdi-mgmt-vss-01
+    ${{ if eq(parameters.envName, 'prd') }}:
+      value: uks-prd-vdi-mgmt-vss-01
+    ${{ if eq(parameters.envName, 'igmf') }}:
+      value: Azure Pipelines
+  - name: tfBackendResourceGroup
+    value: $(tf.backend.resourceGroup)
+  - name: tfBackendStorageAccount
+    value: $(tf.backend.storageAccount)
+  - name: tfBackendContainer
+    value: tfstate

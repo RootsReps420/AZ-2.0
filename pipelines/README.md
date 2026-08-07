@@ -25,7 +25,9 @@ First live bank target: **`int`**. Disconnected sandbox: **`igmf`** (ignitemyfir
 | [`tf-AVD-Labs-Deployment.yml`](tf-AVD-Labs-Deployment.yml) | `labs` | Lab spokes + storage |
 | [`tf-AVD-Hostpool-Deployment.yml`](tf-AVD-Hostpool-Deployment.yml) | `avd` | Host pools, gallery defs |
 
-All support `action`: `plan` \| `apply` \| `destroy`, and `envName`: `int` \| `prd`.
+All support `action`: `plan` \| `apply` \| `destroy`, and `envName`: `int` \| `prd` \| `igmf`.
+
+When **`envName=igmf`**: service connection `SC-IGMF-VDI-TF-01`, hosted pool, variable group `tf-backend-igmf`, and **seed** `*.tfvars.example` → `terraform.tfvars` (including `_global` from `environments/igmf/global.tfvars.example`). Bank envs (`int`/`prd`) never seed.
 
 ### Catch-all / convenience
 
@@ -33,7 +35,7 @@ All support `action`: `plan` \| `apply` \| `destroy`, and `envName`: `int` \| `p
 |---|---|
 | [`templates/terraform-stack.yml`](templates/terraform-stack.yml) | Reusable job: scope banner → init / plan / apply (or destroy) |
 | [`templates/connectivity-stages.yml`](templates/connectivity-stages.yml) | Hub stage expansion from `hubSelection` |
-| [`tf-release.yml`](tf-release.yml) | Bank catch-all — pick `envName` + `stackName` (+ `hubSelection` when connectivity) |
+| [`tf-release.yml`](tf-release.yml) | Catch-all — pick `envName` (`int`/`prd`/`igmf`) + `stackName` (+ `hubSelection` when connectivity) |
 | [`tf-int-connectivity.yml`](tf-int-connectivity.yml) | Bank convenience for int connectivity |
 | [`tf-igmf-release.yml`](tf-igmf-release.yml) | IGMF sandbox catch-all |
 | [`tf-igmf-connectivity.yml`](tf-igmf-connectivity.yml) | IGMF connectivity convenience |

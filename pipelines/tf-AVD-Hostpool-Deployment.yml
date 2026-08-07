@@ -1,5 +1,6 @@
 # AVD host pools, workspaces, scaling plans, gallery definitions, DCRs.
 # Requires labs (+ connectivity / mgmt). Session-host VMs stay PowerShell.
+# envName=igmf seeds terraform.tfvars from the avd *.tfvars.example.
 
 trigger: none
 
@@ -11,6 +12,7 @@ parameters:
     values:
       - int
       - prd
+      - igmf
   - name: action
     displayName: Action
     type: string
@@ -21,22 +23,9 @@ parameters:
       - destroy
 
 variables:
-  - name: azureServiceConnection
-    ${{ if eq(parameters.envName, 'int') }}:
-      value: SC-R-VDI-INT-C-01
-    ${{ if eq(parameters.envName, 'prd') }}:
-      value: SC-P-VDI-PRD-C-01
-  - name: agentPool
-    ${{ if eq(parameters.envName, 'int') }}:
-      value: uks-int-vdi-mgmt-vss-01
-    ${{ if eq(parameters.envName, 'prd') }}:
-      value: uks-prd-vdi-mgmt-vss-01
-  - name: tfBackendResourceGroup
-    value: $(tf.backend.resourceGroup)
-  - name: tfBackendStorageAccount
-    value: $(tf.backend.storageAccount)
-  - name: tfBackendContainer
-    value: tfstate
+  - template: templates/env-context.yml
+    parameters:
+      envName: ${{ parameters.envName }}
 
 stages:
   - stage: avd
@@ -52,6 +41,7 @@ stages:
           tfBackendStorageAccount: $(tfBackendStorageAccount)
           tfBackendContainer: $(tfBackendContainer)
           action: ${{ parameters.action }}
+          seedIgmfTfvars: ${{ eq(parameters.envName, 'igmf') }}
           stageLabel: ${{ parameters.action }} ${{ parameters.envName }} — AVD host pools
           scopeManifest: |
             - AVD resource group(s)

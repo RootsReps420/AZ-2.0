@@ -387,16 +387,17 @@ flowchart LR
 | [`pipelines/tf-Hub-Management-Deployment.yml`](../pipelines/tf-Hub-Management-Deployment.yml) | Named: `mgmt` |
 | [`pipelines/tf-AVD-Labs-Deployment.yml`](../pipelines/tf-AVD-Labs-Deployment.yml) | Named: `labs` |
 | [`pipelines/tf-AVD-Hostpool-Deployment.yml`](../pipelines/tf-AVD-Hostpool-Deployment.yml) | Named: `avd` |
-| [`pipelines/tf-release.yml`](../pipelines/tf-release.yml) | Catch-all: pick `envName` + `stackName` (+ hub selection when connectivity) — **not** a prerequisite |
+| [`pipelines/tf-release.yml`](../pipelines/tf-release.yml) | Catch-all: pick `envName` (`int`/`prd`/`igmf`) + `stackName` (+ hub selection when connectivity) — **not** a prerequisite |
 | [`pipelines/tf-int-connectivity.yml`](../pipelines/tf-int-connectivity.yml) | Convenience wrapper for int connectivity |
 | [`pipelines/tf-igmf-*.yml`](../pipelines/tf-igmf-release.yml) | IGMF sandbox equivalents |
 
 **How a release run works**
 
-1. Queue a named pipeline (e.g. `tf-Hub-Deployment.yml` with `envName=int`, `hubSelection=hub01`, `action=plan`) or use `tf-release.yml` with the matching `stackName`.
+1. Queue a named pipeline (e.g. `tf-Hub-Deployment.yml` with `envName=int` or `igmf`, `hubSelection=hub01`, `action=plan`) or use `tf-release.yml` with the matching `stackName`.
 2. AzDo picks the env’s **service connection** and **agent pool**:
    - int → `SC-R-VDI-INT-C-01` on pool `uks-int-vdi-mgmt-vss-01`
    - prd → `SC-P-VDI-PRD-C-01` on pool `uks-prd-vdi-mgmt-vss-01`
+   - igmf → `SC-IGMF-VDI-TF-01` on hosted `Azure Pipelines` (+ variable group `tf-backend-igmf`; **seeds** tfvars from examples)
 3. Job logs a **deployment scope banner** (what will be managed), then working directory = `environments/_global` or `environments/<env>/<stack>`.
 4. State key = `{env}/{stack}.tfstate` in the configured storage container (backend RG/SA from AzDo variable group `tf.backend.*`).
 5. Connectivity uses `enable_hub01` / `enable_hub02` (one state file). Phased first deploy: `hub01` then `hub02`. `both` is one apply with both hubs. Destroy tears down the whole connectivity stack.

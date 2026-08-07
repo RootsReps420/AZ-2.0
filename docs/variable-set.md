@@ -7,7 +7,11 @@ Fill before first `plan`/`apply`. Placeholder zeros (`00000000-…`) are intenti
 
 ---
 
-## Bank tags (`mandatory_tags`)
+## Tags (`modules/tags` — sole source)
+
+Every Azure resource gets tags **only** from [`modules/tags`](../modules/tags). Stacks call the module and pass `tags = module.tags*.tags`. Resource modules forward that map; they do not invent keys. There is no optional / additional tag channel.
+
+### Bank keys (`mandatory_tags` in tfvars)
 
 Required by `modules/tags`. **Platform standard** for int/prd (all stacks):
 
@@ -21,6 +25,31 @@ Required by `modules/tags`. **Platform standard** for int/prd (all stacks):
 IGMF sandbox uses its own keys (`IGMF-SANDBOX` / `IGMF001` / etc.).
 
 Pass as `var.mandatory_tags` into every env root. Do not embed owner/cost strings in modules.
+
+### Platform keys (module-owned)
+
+Always applied by `modules/tags`:
+
+| Key | Source |
+|---|---|
+| `environment` | stack `var.environment` |
+| `region` | stack `var.location` |
+| `workload` | lane → see below |
+| `managed-by` | constant `terraform` |
+| `repo` | constant `vdi-terraform` |
+
+### Workload lanes
+
+Callers pass a **lane**; the tags module maps to the Azure `workload` string (single place to rename):
+
+| Lane | Tag value | Used by |
+|---|---|---|
+| `platform` | `vdi-platform` | `config/vwan`, connectivity, mgmt |
+| `pers` | `vdi-pers` | labs PERS; avd PERS host pools / workspace / RG |
+| `mult` | `vdi-mult` | labs MSH; avd MSH + shared KV / gallery |
+| `priv` | `vdi-priv` | labs PRIV; avd PRIV host pools / workspace / RG |
+
+AVD uses three module calls (`tags_mult` / `tags_pers` / `tags_priv`).
 
 ---
 
@@ -55,7 +84,7 @@ Hub/mgmt/lab GUIDs remain `TODO(deploy)` until pulled from AzDo/GLB.
 |---|---|---|
 | `dns_servers` | `["10.19.96.1", "10.19.97.1"]` | `p_dnsServers` |
 
-Override only if corporate DNS changes.
+Override only if corporate DNS changes. IGMF uses Azure DNS `168.63.129.16`.
 
 ---
 
@@ -78,15 +107,5 @@ See `docs/address-plan-hubs.md`.
 | `gallery_role_assignments` | avd | Packer MSI principal_ids → Contributor |
 | `hub01_id` / `hub02_id` | mgmt, labs | From connectivity outputs |
 | `hub01_firewall_private_ip` | labs | From connectivity (vWAN AZFW IP, not classic `.4`) |
-| `law_id` | avd | From mgmt output (optional diagnostics) |
-| `expressroute_circuit_peering_id` | connectivity | External ER peering |
-| `mgmt_role_assignments` | mgmt | Subscription RBAC principals from tfvars |
-
----
-
-## Backend / state (AzDo)
-
-Configure `backend "azurerm"` via `-backend-config` in pipelines (storage account,
-container, key per stack). Do not commit access keys. Suggested key pattern:
-
-`{env}/{stack}.tfstate` e.g. `int/connectivity.tfstate`
+| `agents_subnet_id` | labs | From mgmt (Deny ACLs) |
+| `law_id` | labs (optional), avd | From mgmt |

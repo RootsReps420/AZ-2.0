@@ -1,22 +1,16 @@
 module "tags" {
   source = "../.."
 
-  workload    = "vdi-platform"
-  environment = "dev"
+  workload    = "platform"
+  environment = "int"
   region      = "uksouth"
 
   mandatory = {
-    costCentre             = "CC-4821"
-    securityClassification = "Internal"
-    resourceOwner          = "avd-platform@example.com"
-    CMDB_AppID             = "APP-12345"
-  }
-
-  additional = {
-    cost_centre_extra = "demo-only"
+    costCentre             = "430034"
+    securityClassification = "Limited"
+    resourceOwner          = "VirtualTeam"
+    CMDB_AppID             = "AL17611"
   }
 }
 
-output "tags" {
-  value = module.tags.tags
-}
+# Pass to resources: tags = module.tags.tags

@@ -30,7 +30,7 @@ resource "azurerm_resource_group" "priv_avd" {
 
   name     = module.rg_priv_avd_name[0].name
   location = local.location
-  tags     = module.tags.tags
+  tags     = module.tags_priv.tags
 }
 
 module "workspace_priv" {
@@ -52,7 +52,7 @@ module "workspace_priv" {
     }
   }
 
-  tags = module.tags.tags
+  tags = module.tags_priv.tags
 }
 
 module "hostpool_priv" {
@@ -78,7 +78,7 @@ module "hostpool_priv" {
   validate_environment             = try(each.value.validate_environment, false)
 
   log_analytics_workspace_id = var.law_id
-  tags                       = module.tags.tags
+  tags                       = module.tags_priv.tags
 }
 
 module "scaling_plan_priv" {
@@ -100,5 +100,5 @@ module "scaling_plan_priv" {
     }
   }
 
-  tags = module.tags.tags
+  tags = module.tags_priv.tags
 }

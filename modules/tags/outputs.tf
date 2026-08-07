@@ -1,4 +1,4 @@
 output "tags" {
-  description = "Single merged tag map combining mandatory, platform, and additional tags. Pass directly to the `tags` argument on resources."
+  description = "Mandatory tag map (bank + platform). Pass directly to the tags argument on Azure resources. Sole tag source for this repo."
   value       = local.tags
 }

@@ -1,69 +1,67 @@
 # modules/tags
 
-Enforces the **bank tagging standard**. A pure-computation module (no Azure
-resources) that merges mandatory, platform, and additional tags into a single
-map. **Every other module** passes this output straight to its resources'
-`tags` argument.
+**Sole source of Azure resource tags** for this repo. Pure computation (no Azure
+resources): merges bank mandatory tags with platform tags into one map. Every
+stack root calls this module and passes `tags = module.tags.tags` (or
+`tags_pers` / `tags_mult` / `tags_priv`) to resources. Resource modules only
+forward that map — they never invent tag keys.
 
-## Behaviour
+## Mandatory catalog (every resource)
 
-- **Mandatory tags** are a typed `object`, so `terraform plan` **fails** if any
-  required key is missing. A validation rule additionally rejects empty values.
-- **Platform tags** are auto-applied to every resource:
-  `managed-by = "terraform"`, `environment`, `region`, `workload`,
-  `repo = "vdi-terraform"`.
-- **Additional tags** extend the set per workload but merge at **lowest
-  precedence** — they can add keys but never override the standard.
+| Key | Source |
+|---|---|
+| `costCentre` | tfvars → `mandatory` |
+| `securityClassification` | tfvars → `mandatory` |
+| `resourceOwner` | tfvars → `mandatory` |
+| `CMDB_AppID` | tfvars → `mandatory` |
+| `environment` | caller → module |
+| `region` | caller (`location`) → module |
+| `workload` | lane → module map (`vdi-*`) |
+| `managed-by` | module constant `terraform` |
+| `repo` | module constant `vdi-terraform` |
 
-Precedence (low → high): `additional` → `mandatory` → `platform`.
+No optional / additional tags.
+
+## Workload lanes
+
+Callers pass a **lane**; this module owns the Azure tag string:
+
+| `workload` input | Tag value | Typical use |
+|---|---|---|
+| `platform` | `vdi-platform` | vwan, connectivity, mgmt |
+| `pers` | `vdi-pers` | labs PERS; avd PERS objects |
+| `mult` | `vdi-mult` | labs MSH; avd MSH + shared KV/gallery |
+| `priv` | `vdi-priv` | labs PRIV; avd PRIV objects |
 
 ## Usage
 
 ```hcl
 module "tags" {
-  source = "../../tags"
+  source = "../../modules/tags"
 
-  workload    = "vdi-mult"
-  environment = "prod"
-  region      = "uksouth"
-
-  mandatory = {
-    costCentre             = "CC-4821"
-    securityClassification = "Internal"
-    resourceOwner          = "avd-platform@example.com"
-    CMDB_AppID             = "APP-12345"
-  }
-
-  additional = {
-    "cost-optimisation" = "auto-shutdown"
-  }
+  workload    = "platform" # lane — not the vdi-* string
+  environment = var.environment
+  region      = var.location
+  mandatory   = var.mandatory_tags
 }
 
-# Pass straight through to resources:
-#   tags = module.tags.tags
+# tags = module.tags.tags
 ```
+
+AVD / labs with multiple lanes: call the module three times (`tags_mult`,
+`tags_pers`, `tags_priv`) with lanes `mult` / `pers` / `priv`.
 
 ## Inputs
 
-| Name | Description | Type | Default |
-|------|-------------|------|---------|
-| `mandatory` | Required bank tags (typed object — missing key fails plan) | `object` | — |
-| `workload` | `workload` tag value | `string` | — |
-| `environment` | `environment` tag value | `string` | — |
-| `region` | `region` tag value | `string` | — |
-| `additional` | Optional workload-specific tags (lowest precedence) | `map(string)` | `{}` |
-
-### `mandatory` object
-
-| Key | Description |
-|-----|-------------|
-| `costCentre` | Charge-back cost centre code |
-| `securityClassification` | e.g. Public / Internal / Confidential |
-| `resourceOwner` | Accountable owner (team or DL) |
-| `CMDB_AppID` | CMDB application identifier |
+| Name | Description | Type |
+|------|-------------|------|
+| `mandatory` | Bank tags (typed object) | `object` |
+| `workload` | Lane: `platform` \| `pers` \| `mult` \| `priv` | `string` |
+| `environment` | `environment` tag | `string` |
+| `region` | `region` tag | `string` |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| `tags` | Merged tag map — pass to the `tags` argument on resources |
+| `tags` | Full mandatory tag map |

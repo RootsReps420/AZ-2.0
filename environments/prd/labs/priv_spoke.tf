@@ -6,7 +6,7 @@
 module "tags_priv" {
   source = "../../../modules/tags"
 
-  workload    = "vdi-priv"
+  workload    = "priv"
   environment = local.env
   region      = local.location
   mandatory   = var.mandatory_tags

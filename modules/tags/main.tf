@@ -1,29 +1,29 @@
 # ---------------------------------------------------------------------------
-# Tags — bank tagging standard enforcement
+# Tags — sole source of Azure resource tags for this repo
 #
-# Pure computation module (no Azure resources). Merges the mandatory bank tags,
-# the platform auto-applied tags, and any workload-specific additional tags into
-# a single map. Every other module passes this output straight to the `tags`
-# argument on its resources.
+# Pure computation (no Azure resources). Builds the mandatory tag map every
+# stack passes to resources. Single place to change keys / workload strings.
 #
-# Precedence (lowest -> highest): additional < mandatory < platform.
-# Additional tags can therefore ADD workload-specific keys but can never
-# override a mandatory or platform-standard tag.
+# Callers pass a workload *lane* (platform|pers|mult|priv); this module maps
+# that to the Azure `workload` tag value (vdi-*).
 # ---------------------------------------------------------------------------
 
 locals {
-  # Auto-applied platform tags — consistent across every resource in the repo.
+  workload_values = {
+    platform = "vdi-platform"
+    pers     = "vdi-pers"
+    mult     = "vdi-mult"
+    priv     = "vdi-priv"
+  }
+
   platform_tags = {
     "managed-by" = "terraform"
     environment  = var.environment
     region       = var.region
-    workload     = var.workload
+    workload     = local.workload_values[var.workload]
     repo         = "vdi-terraform"
   }
 
-  tags = merge(
-    var.additional,      # lowest precedence
-    var.mandatory,       # mandatory bank tags
-    local.platform_tags, # highest precedence — always wins
-  )
+  # Platform keys win if they ever collide with bank mandatory keys.
+  tags = merge(var.mandatory, local.platform_tags)
 }

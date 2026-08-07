@@ -814,7 +814,8 @@ Every environment stack is thin glue: it calls these modules with env-specific m
 | Module | What it does | Used by |
 |---|---|---|
 | [`modules/naming`](modules/naming) | Pure computation: turns resource type + region + subscription segment + description into a TDA-compliant name. Fails plan on unknown types. | Every module that creates a named Azure resource |
-| [`modules/tags`](modules/tags) | Pure computation: merges mandatory bank tags + platform tags (`managed-by=terraform`, env, region, workload, repo) + optional extras | Every env root / module that tags resources |
+| [`modules/tags`](modules/tags) | **Sole tag source** — mandatory bank + platform tags; lane (`platform`/`pers`/`mult`/`priv`) → `vdi-*` workload | Every stack root (resources only forward the map) |
+
 
 ### Platform — Virtual WAN and hubs
 
@@ -933,19 +934,27 @@ Hub connection names for spokes are intentional literals: `vhc-{spoke}-hub01` / 
 
 ### `modules/tags`
 
-Mandatory keys (every stack): `costCentre`, `securityClassification`, `resourceOwner`, `CMDB_AppID`.
+**Sole source of tags** for every Azure resource in this repo. Stacks call the module and pass `tags = module.tags.tags` (or `tags_mult` / `tags_pers` / `tags_priv`). No optional extras; resource modules never invent keys.
 
-Example values (platform):
+Mandatory catalog on every resource:
 
-| Key | Value |
+| Key | Source |
 |---|---|
-| costCentre | `CLL411S1XJ` |
-| securityClassification | `Limited` |
-| resourceOwner | `Fletcher, Wayne (Colleague ID 0028929)` |
-| CMDB_AppID | `AL17611` |
+| `costCentre`, `securityClassification`, `resourceOwner`, `CMDB_AppID` | tfvars → `mandatory` |
+| `environment`, `region` | stack vars via module |
+| `workload` | lane → module map (`vdi-*`) |
+| `managed-by`, `repo` | module constants (`terraform`, `vdi-terraform`) |
 
-Platform tags always merged: `managed-by=terraform`, `environment`, `region`, `workload`, `repo=vdi-terraform`.  
-Workloads used: `vdi-platform`, `vdi-pers`, `vdi-mult`, `vdi-priv`.
+Bank int/prd values: `430034` / `Limited` / `VirtualTeam` / `AL17611`. IGMF uses sandbox keys.
+
+Workload lanes (caller passes the short key; module owns the Azure string):
+
+| Lane | Tag value | Used by |
+|---|---|---|
+| `platform` | `vdi-platform` | vwan, connectivity, mgmt |
+| `pers` | `vdi-pers` | labs PERS; avd PERS objects |
+| `mult` | `vdi-mult` | labs MSH; avd MSH + shared KV/gallery |
+| `priv` | `vdi-priv` | labs PRIV; avd PRIV objects |
 
 ---
 

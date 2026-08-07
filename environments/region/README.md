@@ -24,4 +24,5 @@ then `-var=location=<location>`.
 
 - `mandatory_tags` for int/prd: `430034` / `Limited` / `VirtualTeam` / `AL17611`
 - IGMF: sandbox keys (`IGMF-SANDBOX` / `IGMF001` / …)
-- `environment`, `location`, `subscription_code` feed `modules/tags` + `modules/naming` (platform tag keys and resource names)
+- Platform tags (`managed-by`, `environment`, `region`, `workload`, `repo`) come only from [`modules/tags`](../../modules/tags) — callers pass a workload **lane** (`platform` / `pers` / `mult` / `priv`), not the `vdi-*` string
+- `environment`, `location`, `subscription_code` also feed `modules/naming`

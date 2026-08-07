@@ -11,7 +11,7 @@
 module "tags" {
   source = "../../modules/tags"
 
-  workload    = "vdi-platform"
+  workload    = "platform"
   environment = var.environment
   region      = var.location
   mandatory   = var.mandatory_tags

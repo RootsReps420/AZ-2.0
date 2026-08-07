@@ -1,13 +1,7 @@
 variable "mandatory" {
   description = <<-EOT
-    Mandatory bank tags required by the tagging standard. Declared as a typed
-    object so `terraform plan` FAILS if any required key is missing.
-
-    Keys match the bank schema (LLD Open Item 3 resolved):
-      costCentre              : Charge-back cost centre code.
-      securityClassification  : Data/security classification.
-      resourceOwner           : Accountable owner (team or DL).
-      CMDB_AppID              : CMDB application identifier.
+    Bank mandatory tags. Typed object so terraform plan fails if any key is missing.
+    Keys: costCentre, securityClassification, resourceOwner, CMDB_AppID.
   EOT
   type = object({
     costCentre             = string
@@ -23,17 +17,20 @@ variable "mandatory" {
 }
 
 variable "workload" {
-  description = "Workload identifier applied as the `workload` tag (e.g. \"vdi-mult\", \"vdi-pers\", \"vdi-platform\")."
+  description = <<-EOT
+    Workload lane for this module call. Mapped inside this module to the Azure
+    workload tag: platform→vdi-platform, pers→vdi-pers, mult→vdi-mult, priv→vdi-priv.
+  EOT
   type        = string
 
   validation {
-    condition     = trimspace(var.workload) != ""
-    error_message = "workload must be a non-empty string."
+    condition     = contains(["platform", "pers", "mult", "priv"], var.workload)
+    error_message = "workload must be one of: platform, pers, mult, priv."
   }
 }
 
 variable "environment" {
-  description = "Environment applied as the `environment` tag (e.g. \"dev\", \"prod\")."
+  description = "Environment applied as the environment tag (e.g. int, prd, igmf)."
   type        = string
 
   validation {
@@ -43,17 +40,11 @@ variable "environment" {
 }
 
 variable "region" {
-  description = "Region applied as the `region` tag (e.g. \"uksouth\")."
+  description = "Region applied as the region tag (e.g. uksouth)."
   type        = string
 
   validation {
     condition     = trimspace(var.region) != ""
     error_message = "region must be a non-empty string."
   }
-}
-
-variable "additional" {
-  description = "Optional workload-specific tags. Merged in at lowest precedence — cannot override mandatory or platform-standard tags."
-  type        = map(string)
-  default     = {}
 }

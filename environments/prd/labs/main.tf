@@ -11,7 +11,7 @@ locals {
 module "tags_pers" {
   source = "../../../modules/tags"
 
-  workload    = "vdi-pers"
+  workload    = "pers"
   environment = local.env
   region      = local.location
   mandatory   = var.mandatory_tags
@@ -20,7 +20,7 @@ module "tags_pers" {
 module "tags_mult" {
   source = "../../../modules/tags"
 
-  workload    = "vdi-mult"
+  workload    = "mult"
   environment = local.env
   region      = local.location
   mandatory   = var.mandatory_tags

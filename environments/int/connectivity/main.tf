@@ -10,7 +10,7 @@ locals {
 module "tags" {
   source = "../../../modules/tags"
 
-  workload    = "vdi-platform"
+  workload    = "platform"
   environment = local.env
   region      = local.location
   mandatory   = var.mandatory_tags

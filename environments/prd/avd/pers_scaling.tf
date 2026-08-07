@@ -82,7 +82,7 @@ resource "azurerm_resource_group" "pers" {
 
   name     = module.rg_pers_name[0].name
   location = local.location
-  tags     = module.tags.tags
+  tags     = module.tags_pers.tags
 }
 
 module "workspace_pers" {
@@ -105,7 +105,7 @@ module "workspace_pers" {
     }
   }
 
-  tags = module.tags.tags
+  tags = module.tags_pers.tags
 }
 
 module "hostpool_pers" {
@@ -133,7 +133,7 @@ module "hostpool_pers" {
   validate_environment  = try(each.value.validate_environment, false)
 
   log_analytics_workspace_id = var.law_id
-  tags                       = module.tags.tags
+  tags                       = module.tags_pers.tags
 }
 
 module "scaling_plan_pers" {
@@ -155,5 +155,5 @@ module "scaling_plan_pers" {
     }
   }
 
-  tags = module.tags.tags
+  tags = module.tags_pers.tags
 }

@@ -7,10 +7,28 @@ locals {
   env      = var.environment
 }
 
-module "tags" {
+module "tags_mult" {
   source = "../../../modules/tags"
 
-  workload    = "vdi-mult"
+  workload    = "mult"
+  environment = local.env
+  region      = local.location
+  mandatory   = var.mandatory_tags
+}
+
+module "tags_pers" {
+  source = "../../../modules/tags"
+
+  workload    = "pers"
+  environment = local.env
+  region      = local.location
+  mandatory   = var.mandatory_tags
+}
+
+module "tags_priv" {
+  source = "../../../modules/tags"
+
+  workload    = "priv"
   environment = local.env
   region      = local.location
   mandatory   = var.mandatory_tags
@@ -29,7 +47,7 @@ module "rg_name" {
 resource "azurerm_resource_group" "avd" {
   name     = module.rg_name.name
   location = local.location
-  tags     = module.tags.tags
+  tags     = module.tags_mult.tags
 }
 
 module "keyvault" {
@@ -42,7 +60,7 @@ module "keyvault" {
   environment         = local.env
   unique_id           = var.keyvault_unique_id
 
-  tags = module.tags.tags
+  tags = module.tags_mult.tags
 }
 
 module "workspace" {
@@ -66,7 +84,7 @@ module "workspace" {
     }
   }
 
-  tags = module.tags.tags
+  tags = module.tags_mult.tags
 }
 
 module "hostpool" {
@@ -101,7 +119,7 @@ module "hostpool" {
   }
 
   log_analytics_workspace_id = var.law_id
-  tags                       = module.tags.tags
+  tags                       = module.tags_mult.tags
 }
 
 # One scaling plan per host pool — schedules from shared catalog (BU 005 + canary variants)
@@ -128,7 +146,7 @@ module "scaling_plan" {
   }
 
   log_analytics_workspace_id = var.law_id
-  tags                       = module.tags.tags
+  tags                       = module.tags_mult.tags
 
   depends_on = [time_sleep.wvd_power_on_off]
 }
@@ -155,7 +173,7 @@ module "scaling_plan_decom" {
   host_pool_associations = {}
 
   log_analytics_workspace_id = var.law_id
-  tags                       = module.tags.tags
+  tags                       = module.tags_mult.tags
 
   depends_on = [time_sleep.wvd_power_on_off]
 }
@@ -177,7 +195,7 @@ module "rg_gallery_name" {
 resource "azurerm_resource_group" "gallery" {
   name     = module.rg_gallery_name.name
   location = local.location
-  tags     = module.tags.tags
+  tags     = module.tags_mult.tags
 }
 
 module "gallery" {
@@ -193,7 +211,7 @@ module "gallery" {
   # TODO(deploy): Packer MSI principal_ids from tfvars
   role_assignments = var.gallery_role_assignments
 
-  tags = module.tags.tags
+  tags = module.tags_mult.tags
 }
 
 module "image_definition" {
@@ -212,7 +230,7 @@ module "image_definition" {
   security_type      = each.value.security_type
   identifier         = each.value.identifier
 
-  tags = module.tags.tags
+  tags = module.tags_mult.tags
 }
 
 # Multisession data collection (legacy vdi_dcr.bicep) — associations stay with VMs
@@ -228,7 +246,7 @@ module "dcr_msh" {
   dcr_insights_name          = "uks-${local.env}-vdi-avd-dcr-mult-vminsights"
   dcr_fsl_name               = "uks-${local.env}-vdi-avd-dcr-multfslp"
   dcr_wss_name               = "uks-${local.env}-vdi-avd-dcr-multwss"
-  tags                       = module.tags.tags
+  tags                       = module.tags_mult.tags
 }
 
 # Legacy Desktop Virtualization Power On Off Contributor — AVD broker + mult lab subs.

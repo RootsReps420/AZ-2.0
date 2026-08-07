@@ -48,7 +48,29 @@ environments/_global
 | [`environments/prd/*`](environments/prd/) | Production mirrors |
 | [`environments/igmf/*`](environments/igmf/) | Full IGMF sandbox peer (connectivity/mgmt/labs/avd — not bank cutover) |
 | [`pipelines/`](pipelines/) | AzDo Terraform init / plan / apply (bank + IGMF) |
+| [`scripts/`](scripts/) | Local tooling (module scaffold) — not run by AzDo |
+| [`scripts/functions/`](scripts/functions/) | Shared PowerShell helpers used by scripts under `scripts/` |
 | [`docs/dummies-guide.md`](docs/dummies-guide.md) | **Start here** — as-built LLD (diagrams, modules, DevOps vs legacy scripts, CIDRs, AVD, wiring) |
+
+## Scaffold a module
+
+Local PowerShell only (not an AzDo pipeline). From the repo root:
+
+```powershell
+# New Azure resource module under modules/core
+.\scripts\New-TerraformModule.ps1 `
+  -name storage-blob `
+  -path modules\core `
+  -description "Blob storage account for PERS workloads"
+
+# Another category
+.\scripts\New-TerraformModule.ps1 -name my-brick -path modules\platform
+
+# Overwrite an existing scaffold
+.\scripts\New-TerraformModule.ps1 -name my-brick -path modules\platform -force
+```
+
+Creates `main.tf`, `variables.tf`, `outputs.tf`, `versions.tf`, `README.md` (with naming/tags integration examples), `examples/basic/`, and `tests/`. Fill in real resources, then wire from an `environments/<env>/...` stack.
 
 ## Who does what
 

@@ -3,7 +3,7 @@
 **Audience:** engineers new to this monorepo.  
 **Status:** Reflects code on `main` after legacy-to-TF parity (C01-C20 + Wave D + labCorePriv). **Hub03** = spare CIDR + `hub-spare` module in code — **not deployed** until uncommented.  
 **Environments in scope:** `int` (DT / dev test), `prd` (production), and sandbox `igmf` (not bank cutover).  
-**Region:** `uksouth` is live. Pipeline `location` also accepts `italynorth` / `spaincentral` (placeholder labs — stub workdirs + TODO service connections; not deployable yet).
+**Region:** `uksouth` is live. Pipeline `location` also accepts `italynorth` / `spaincentral` (selectable; AzDo SC/backend + hub CIDRs still placeholders — not deploy-ready).
 
 This is the practical LLD for **what Terraform actually deploys today**. Companion notes:
 
@@ -17,16 +17,19 @@ This is the practical LLD for **what Terraform actually deploys today**. Compani
 | [docs/legacy-to-tda-rename-map.md](docs/legacy-to-tda-rename-map.md) · [docs/packer-tda-rename-checklist.md](docs/packer-tda-rename-checklist.md) | Naming / Packer rename helpers |
 | [docs/plans/04-gap-analysis-legacy-vs-tf.md](docs/plans/04-gap-analysis-legacy-vs-tf.md) | Parity execution status (complete) |
 | [docs/plans/02-azure-1.0-to-terraform-migration.md](docs/plans/02-azure-1.0-to-terraform-migration.md) | Migration context |
+| [pipelines/README.md](pipelines/README.md) | Location / state keys / regional var-files |
+| [environments/region/README.md](environments/region/README.md) | Per-region value files |
 
 Local-only (gitignored — stay on disk, not pushed): `docs/plans/03-cursor-handoff.md`, `docs/plans/05-sandbox-deploy-runthrough.md`.
 
-**IGMF sandbox** (`environments/igmf/{connectivity,mgmt,labs,avd}` + `pipelines/tf-igmf-*.yml`): full env peer of int/prd for disconnected ignitemyfire.co.uk smoke tests — **not** bank cutover. Bank live targets remain `int` / `prd`.
+**IGMF sandbox** (`environments/igmf/{connectivity,mgmt,labs,avd}` via the **named** pipelines with `envName=igmf`): disconnected ignitemyfire.co.uk smoke tests — **not** bank cutover. Bank live targets remain `int` / `prd`.
 
 **Hard rule:** session-host VMs are **not** Terraform. Terraform builds network, platform services, storage, and AVD *objects*. PowerShell / AzDo places VMs and users.
 
 ## Table of contents
 
 - [Purpose and topology](#purpose-and-topology)
+- [How the repo fits together](#how-the-repo-fits-together)
 - [Pipeline → stack map](#pipeline--stack-map)
 - [Deploy: Virtual WAN (vwan)](#deploy-virtual-wan-vwan)
 - [Deploy: Connectivity](#deploy-connectivity)
@@ -209,86 +212,206 @@ flowchart TB
 
 ```text
 1. config/vwan
-2. environments/<env>/connectivity
+2. environments/<env>/connectivity   (+ region/<location>/<env>.connectivity.tfvars)
 3. environments/<env>/mgmt
 4. environments/<env>/labs
 5. environments/<env>/avd
 ```
 
 `<env>` = `int` | `prd` | `igmf`.  
-Stacks do **not** use remote-state data sources today. Wire outputs into the next stack’s `terraform.tfvars` by hand or pipeline variables.
+Stacks do **not** use remote-state data sources today. Wire outputs into the next stack’s values (region tfvars or pipeline vars) by hand.
 
-### Repo layout (cutover)
+---
+
+## How the repo fits together
+
+Three layers — do not confuse them:
+
+| Layer | Path | Role |
+|---|---|---|
+| **Modules** | `modules/**` | Reusable logic (resources). Never queued by AzDo directly. |
+| **Roots / workspaces** | `config/vwan`, `environments/<env>/<stack>` | Thin Terraform roots AzDo `cd`s into — call modules. |
+| **Regional values** | `environments/region/<location>/<env>.<stack>.tfvars` | Subscription IDs, hub CIDRs, tags, DNS, etc. Loaded with `-var-file`. |
+
+### What each workspace deploys
+
+```mermaid
+flowchart TB
+  subgraph config_ws ["config/ — shared platform config"]
+    VW["config/vwan\n→ Azure Virtual WAN + RG"]
+  end
+
+  subgraph env_ws ["environments/int|prd|igmf/ — env stack roots"]
+    C["connectivity/\n→ FWP + Hub01 + Hub02"]
+    M["mgmt/\n→ LAW + alerts + AgentsSubnet"]
+    L["labs/\n→ spokes + FSLogix + KVs"]
+    A["avd/\n→ host pools + gallery defs + DCRs"]
+  end
+
+  subgraph vals ["environments/region/ — values only"]
+    R["uksouth / italynorth / spaincentral\nenv.stack.tfvars"]
+  end
+
+  subgraph bricks ["modules/ — logic"]
+    MOD[naming · tags · platform · core · avd · gallery]
+  end
+
+  R -.->|pipeline -var-file| C
+  R -.->|when files exist| M
+  R -.-> L
+  R -.-> A
+  VW --> MOD
+  C --> MOD
+  M --> MOD
+  L --> MOD
+  A --> MOD
+  VW -->|vwan_id| C
+  C -->|hub IDs / FW IP| M
+  C --> L
+  M -->|law_id / agents_subnet| L
+  M --> A
+  L --> A
+```
+
+### Repo layout
 
 ```text
 config/
-  vwan/                    # Shared Virtual WAN (not an env)
+  vwan/                              # Shared Virtual WAN root (not an env)
 environments/
-  int/{connectivity,mgmt,labs,avd}/
-  prd/{connectivity,mgmt,labs,avd}/
-  igmf/{connectivity,mgmt,labs,avd}/   # sandbox — not bank cutover
-  {int,prd,igmf}/{italynorth,spaincentral}/{…}/  # regional stubs (README only)
-pipelines/                 # AzDo Terraform init/plan/apply
-modules/                   # Reusable bricks — see Module catalogue
-scripts/                   # Local tooling only (not AzDo)
-legacy/                    # Local reference clones only (gitignored / untracked)
+  int|prd|igmf/
+    {connectivity,mgmt,labs,avd}/    # Stack roots (main.tf → modules)
+  region/
+    uksouth|italynorth|spaincentral/
+      <env>.<stack>.tfvars           # Per region × env × stack values
+                                     # connectivity files exist for all 3×3 today
+modules/                             # Reusable bricks
+pipelines/                           # Named AzDo entry points + templates
+scripts/                             # Local module scaffold only (not AzDo)
+legacy/                              # Local Azure 1.0 clones (gitignored)
 ```
 
-Ignore for cutover: `environments/uksouth/{dev,prod}`, `environments/prod/` (naming stub), [`modules/core/demo-module`](modules/core/demo-module) / [`modules/core/scaffold-smoke`](modules/core/scaffold-smoke). Live folder/env segment is **`prd`**, not `prod`. Italy/Spain folders are pipeline placeholders only.
+Ignore for cutover: `environments/uksouth/{dev,prod}` (old greenfield demos). Live env segment is **`prd`**, not `prod`. Leftover `environments/<env>/{italynorth,spaincentral}/` README stubs are unused — pipelines use stack roots + region tfvars instead.
 
 ---
 
 ## Pipeline → stack map
 
-Prefer the **named** pipelines below. [`pipelines/tf-release.yml`](pipelines/tf-release.yml) is a single-stack catch-all — **not** an orchestrator and **not** a prerequisite. It does not run `vwan` → `avd` in one go; you still queue one stack at a time.
+**Day-to-day entry points** (queue these):
 
-Shared env + **location** → service connection / agent / backend mapping lives in [`pipelines/templates/env-context.yml`](pipelines/templates/env-context.yml). Hub selection and location path/state rules: [`pipelines/README.md`](pipelines/README.md).
-
-**`location`:** `uksouth` (default, live) \| `italynorth` \| `spaincentral` (placeholders). Stack workdir is always `environments/<env>/<stack>` (`config/vwan` for vwan); values from `environments/region/<location>/<env>.<stack>.tfvars` when present; non-uksouth state keys `{env}/{location}/{stack}.tfstate`; SC is `TODO-<env>-<location>-SC` until regional labs exist.
-
-### Mapping table
-
-| Pipeline | Stack | Working directory (uksouth) | Deploys |
+| Pipeline | Stack | Working directory | Deploys |
 |---|---|---|---|
 | [`tf-vWAN-Deployment.yml`](pipelines/tf-vWAN-Deployment.yml) | `vwan` | `config/vwan` | Virtual WAN |
 | [`tf-Hub-Deployment.yml`](pipelines/tf-Hub-Deployment.yml) | connectivity | `environments/<env>/connectivity` | FWP + Hub01 / Hub02 |
 | [`tf-Hub-Management-Deployment.yml`](pipelines/tf-Hub-Management-Deployment.yml) | mgmt | `environments/<env>/mgmt` | LAW, alerts, AgentsSubnet |
 | [`tf-AVD-Labs-Deployment.yml`](pipelines/tf-AVD-Labs-Deployment.yml) | labs | `environments/<env>/labs` | spokes, FSLogix, KVs, blobs |
 | [`tf-AVD-Hostpool-Deployment.yml`](pipelines/tf-AVD-Hostpool-Deployment.yml) | avd | `environments/<env>/avd` | pools, gallery defs, DCRs |
-| [`tf-release.yml`](pipelines/tf-release.yml) | param (`stackName`) | same as chosen stack | single-stack catch-all — **not** an orchestrator |
-| Convenience wrappers | — | — | [`tf-int-connectivity.yml`](pipelines/tf-int-connectivity.yml), [`tf-igmf-*.yml`](pipelines/tf-igmf-release.yml) |
 
-`<env>` = `int` | `prd` | `igmf`. Apply order across runs must still be `vwan` → `connectivity` → `mgmt` → `labs` → `avd`.
+Parameters on every named pipeline: `envName` (`int`\|`prd`\|`igmf`), `location` (`uksouth`\|`italynorth`\|`spaincentral`), `action` (`plan`\|`apply`\|`destroy`). Hub also takes `hubSelection`.
+
+Catch-alls (`tf-release.yml`, `tf-igmf-*`, `tf-int-connectivity.yml`) are optional alternatives — **not** required for the flow above.
+
+### Named pipeline → workspace → Azure
 
 ```mermaid
 flowchart LR
-  VW[tf-vWAN-Deployment] --> G[vwan]
-  HB[tf-Hub-Deployment] --> C[connectivity]
-  MG[tf-Hub-Management-Deployment] --> M[mgmt]
-  LB[tf-AVD-Labs-Deployment] --> L[labs]
-  AV[tf-AVD-Hostpool-Deployment] --> A[avd]
-  REL[tf-release.yml] -.->|pick one stackName| G
-  REL -.-> C
-  REL -.-> M
-  REL -.-> L
-  REL -.-> A
-  G --> C --> M --> L --> A
+  subgraph azdo ["Azure DevOps — named pipelines"]
+    P1[tf-vWAN-Deployment]
+    P2[tf-Hub-Deployment]
+    P3[tf-Hub-Management-Deployment]
+    P4[tf-AVD-Labs-Deployment]
+    P5[tf-AVD-Hostpool-Deployment]
+  end
+
+  subgraph roots ["Terraform roots in this repo"]
+    W1[config/vwan]
+    W2[environments/ENV/connectivity]
+    W3[environments/ENV/mgmt]
+    W4[environments/ENV/labs]
+    W5[environments/ENV/avd]
+  end
+
+  subgraph azure ["Azure"]
+    A1[Virtual WAN]
+    A2[Hubs + firewall policy]
+    A3[LAW + mgmt spoke]
+    A4[Lab spokes + storage]
+    A5[AVD objects + gallery defs]
+  end
+
+  P1 --> W1 --> A1
+  P2 --> W2 --> A2
+  P3 --> W3 --> A3
+  P4 --> W4 --> A4
+  P5 --> W5 --> A5
+  A1 --> A2 --> A3 --> A4 --> A5
 ```
+
+### How `location` + region tfvars work
+
+1. You pick **`location`** on the pipeline (e.g. `uksouth`).
+2. AzDo resolves **identity** via [`env-context.yml`](pipelines/templates/env-context.yml) (SC + agent + backend VG for uksouth igmf).
+3. [`terraform-stack.yml`](pipelines/templates/terraform-stack.yml) sets:
+   - **workdir** = `config/vwan` or `environments/<env>/<stack>` (same for all locations)
+   - **state key** = `{env}/{stack}.tfstate` (uksouth) or `{env}/{location}/{stack}.tfstate` (other)
+   - **`-var-file`** = `environments/region/<location>/<env>.<stack>.tfvars` **if that file exists**
+   - **`-var=location=<location>`** always (overrides location in the file if both set)
+4. Connectivity also passes `enable_hub01` / `enable_hub02` from `hubSelection`.
+
+```mermaid
+flowchart TB
+  Q["Queue tf-Hub-Deployment\nenvName=igmf · location=uksouth · hubSelection=hub01"]
+  EC[env-context.yml\nSC + agent + backend]
+  TS[terraform-stack.yml]
+  WD["workdir:\nenvironments/igmf/connectivity"]
+  VF["-var-file:\nregion/uksouth/igmf.connectivity.tfvars"]
+  LOC["-var=location=uksouth"]
+  MOD["modules: tags · naming · firewall-policy · hub-secured · hub-unsecured"]
+  AZ[Azure hubs in uksouth]
+
+  Q --> EC --> TS
+  TS --> WD
+  TS --> VF
+  TS --> LOC
+  WD --> MOD
+  VF --> MOD
+  LOC --> MOD
+  MOD --> AZ
+```
+
+**Connectivity packages today:** all three locations × `int` / `prd` / `igmf` have `*.connectivity.tfvars`.  
+- **uksouth** — filled (IGMF deploy-ready; int/prd still need real subscription / vWAN IDs).  
+- **italynorth / spaincentral** — tags + placeholders; hub CIDRs blank (`""`) until address plan — do not apply yet.  
+- **mgmt / labs / avd / vwan** — no region tfvars yet (IGMF uksouth can still seed from stack `*.tfvars.example`).
+
+See [`environments/region/README.md`](environments/region/README.md).
+
+### How a release run works
+
+1. Queue a **named** pipeline, e.g. `tf-Hub-Deployment.yml` with `envName=igmf`, `location=uksouth`, `hubSelection=hub01`, `action=plan`.
+2. `env-context.yml` picks SC / agent:
+   - uksouth int → `SC-R-VDI-INT-C-01` / `uks-int-vdi-mgmt-vss-01`
+   - uksouth prd → `SC-P-VDI-PRD-C-01` / `uks-prd-vdi-mgmt-vss-01`
+   - uksouth igmf → `SC-IGMF-VDI-TF-01` / hosted + `tf-backend-igmf`
+   - other locations → `TODO-<env>-<location>-SC` / hosted (placeholder)
+3. Scope banner prints env, location, stack, state key, workdir, and whether a region var-file was found.
+4. Job runs in the stack workdir; plan/destroy attach the region `-var-file` when present.
+5. Apply order across separate runs: **vWAN → Hub → Management → Labs → Hostpool**.
 
 ### Split of responsibility (memorise this)
 
 | Lane | Tooling | What it does |
 |---|---|---|
-| **INFRA** | This repo + AzDo Terraform pipelines | Create/update platform + AVD *service objects* |
+| **INFRA** | This repo + named AzDo TF pipelines | Create/update platform + AVD *service objects* |
 | **OPERATIONAL** | Legacy `vdi-scripts` / `vdi-mult` / `vdi-libraries` AzDo pipelines | Build/decom/power VMs, tokens, user RBAC, FSLogix profile ops |
 | **IMAGES** | Legacy `vdi-images` Packer pipelines | Publish gallery **versions** into TF-managed definitions |
 | **POLICY** | `vdi-initiatives` | Azure Policy — **deferred** (includes long-term Secure Hub FW rules) |
 
 ```mermaid
 flowchart LR
-  PR[PR / manual release] --> TFP[AzDo named TF pipelines]
-  TFP -->|init plan apply| TF[Terraform stacks]
-  TF -->|outputs: tokens hub IDs LAW STA names| OUT[(tfvars / pipeline vars)]
+  PR[PR / manual release] --> TFP[Named TF pipelines]
+  TFP -->|init plan apply| TF[Terraform stack roots]
+  TF -->|outputs: tokens hub IDs LAW STA names| OUT[(region tfvars / pipeline vars)]
 
   MAN[Manual / scheduled ops] --> OPS[AzDo: vdi-scripts / vdi-mult]
   OPS -->|reads tokens + placement| VM[Session hosts]
@@ -298,23 +421,6 @@ flowchart LR
   IMG -->|publishes versions| GAL[TF gallery definitions]
   TF --> GAL
 ```
-
-### How a release run works
-
-1. Queue a named pipeline (e.g. `tf-Hub-Deployment.yml` with `envName=int` or `igmf`, `location=uksouth`, `hubSelection=hub01`, `action=plan`) or use `tf-release.yml` with the matching `stackName`.
-2. AzDo picks the env + location **service connection** and **agent pool** via `env-context.yml`:
-   - uksouth int → `SC-R-VDI-INT-C-01` on pool `uks-int-vdi-mgmt-vss-01`
-   - uksouth prd → `SC-P-VDI-PRD-C-01` on pool `uks-prd-vdi-mgmt-vss-01`
-   - uksouth igmf → `SC-IGMF-VDI-TF-01` on hosted `Azure Pipelines` (+ variable group `tf-backend-igmf`; **seeds** tfvars from examples)
-   - italynorth / spaincentral → placeholder `TODO-<env>-<location>-SC` on hosted pool
-3. Job logs a **deployment scope banner** (env, location, stack, SC), then working directory = `config/vwan` or `environments/<env>/<stack>`, plus optional `-var-file=environments/region/<location>/<env>.<stack>.tfvars`.
-4. State key = `{env}/{stack}.tfstate` (uksouth) or `{env}/{location}/{stack}.tfstate` (other) in the configured storage container (`tf.backend.*`).
-5. Plan/apply/destroy always pass `-var=location=<slug>`. Connectivity also uses `enable_hub01` / `enable_hub02` (one state file). Phased first deploy: `hub01` then `hub02`. Details: [`pipelines/README.md`](pipelines/README.md).
-6. Order of applies across runs must still be `vwan` → `connectivity` → `mgmt` → `labs` → `avd`.
-
-Reusable job template: [`pipelines/templates/terraform-stack.yml`](pipelines/templates/terraform-stack.yml) (scope banner → install TF → `init` → `validate` → `plan` → `apply` or `destroy`). Connectivity stages: [`pipelines/templates/connectivity-stages.yml`](pipelines/templates/connectivity-stages.yml).
-
-**Not rewritten:** GLB common libraries. Same SPNs / private agents as legacy; only the deploy step is Terraform instead of Bicep.
 
 ### Legacy repos — fate of each
 
@@ -365,9 +471,10 @@ These keep running in AzDo against the Azure objects Terraform created. They nee
 
 | Field | Value |
 |---|---|
-| **Pipeline** | [`tf-vWAN-Deployment.yml`](pipelines/tf-vWAN-Deployment.yml) (or `tf-release.yml` with `stackName=vwan`) |
-| **Working directory** | `config/vwan` |
-| **State key** | `{env}/vwan.tfstate` (e.g. `int/vwan.tfstate` when queued with `envName=int`) |
+| **Pipeline** | [`tf-vWAN-Deployment.yml`](pipelines/tf-vWAN-Deployment.yml) |
+| **Working directory** | [`config/vwan`](config/vwan) |
+| **State key** | `{env}/vwan.tfstate` (uksouth) or `{env}/{location}/vwan.tfstate` |
+| **Region tfvars** | None yet — IGMF uksouth seeds from [`environments/igmf/global.tfvars.example`](environments/igmf/global.tfvars.example) |
 | **Depends on** | Nothing (first apply) |
 | **Feeds** | connectivity `virtual_wan_id` |
 | **Out of this pipeline** | Hubs, firewall, spokes, AVD — all later stacks |
@@ -379,9 +486,18 @@ These keep running in AzDo against the Azure objects Terraform created. They nee
 | Resource group | Naming segment `conn` |
 | Virtual WAN | SKU Standard |
 
-**Output → next:** `vwan_id` → connectivity `virtual_wan_id`.
+**Output → next:** `vwan_id` → paste into `environments/region/<location>/<env>.connectivity.tfvars` as `virtual_wan_id`.
 
-Modules called: `naming`, `tags`, `vwan`.
+Modules called: `naming`, `tags`, [`platform/vwan`](modules/platform/vwan).
+
+```mermaid
+flowchart LR
+  P[tf-vWAN-Deployment] --> R[config/vwan]
+  R --> N[modules/naming]
+  R --> T[modules/tags]
+  R --> V[modules/platform/vwan]
+  V --> AZ[Azure Virtual WAN]
+```
 
 ---
 
@@ -389,12 +505,27 @@ Modules called: `naming`, `tags`, `vwan`.
 
 | Field | Value |
 |---|---|
-| **Pipeline** | [`tf-Hub-Deployment.yml`](pipelines/tf-Hub-Deployment.yml) (`hubSelection`: `hub01` \| `hub02` \| `both`); convenience: [`tf-int-connectivity.yml`](pipelines/tf-int-connectivity.yml), [`tf-igmf-connectivity.yml`](pipelines/tf-igmf-connectivity.yml) |
+| **Pipeline** | [`tf-Hub-Deployment.yml`](pipelines/tf-Hub-Deployment.yml) (`hubSelection`: `hub01` \| `hub02` \| `both`) |
 | **Working directory** | `environments/<env>/connectivity` |
-| **State key** | `{env}/connectivity.tfstate` |
-| **Depends on** | `vwan` → `virtual_wan_id` |
+| **Region values** | `environments/region/<location>/<env>.connectivity.tfvars` |
+| **State key** | `{env}/connectivity.tfstate` (uksouth) or `{env}/{location}/connectivity.tfstate` |
+| **Depends on** | `vwan` → `virtual_wan_id` in the region tfvars |
 | **Feeds** | mgmt + labs (`hub01_id`, `hub01_firewall_private_ip`); labs MSH also needs `hub02_id` |
 | **Out of this pipeline** | LAW/alerts, lab spokes/storage, AVD objects; Hub02 VPN **site/peer**; full FWP allow-lists; Hub03 until uncommented |
+
+```mermaid
+flowchart LR
+  P[tf-Hub-Deployment] --> W[environments/ENV/connectivity]
+  VF[region/LOC/ENV.connectivity.tfvars] -.-> W
+  W --> T[tags]
+  W --> N[naming]
+  W --> F[firewall-policy]
+  W --> H1[hub-secured]
+  W --> H2[hub-unsecured]
+  F --> AZ1[Azure FWP]
+  H1 --> AZ2[Hub01 + AZFW + ER]
+  H2 --> AZ3[Hub02 + VPN shell]
+```
 
 ### What it creates
 
@@ -406,12 +537,15 @@ Modules called: `naming`, `tags`, `vwan`.
 | Hub03 (`hub-spare`) | **Not in apply** — CIDR var retained; `module "hub_spare"` commented out. Uncomment to deploy (region-agnostic). |
 | ER circuit connection | Only if `expressroute_circuit_peering_id` set (default `null`) |
 
-**Hub address prefixes (defaults):**
+**Hub address prefixes** come from the **region tfvars** (not hardcoded in `main.tf`):
 
-| Env | Hub01 | Hub02 | Hub03 |
-|---|---|---|---|
-| int | `10.170.245.0/24` | `10.170.246.0/24` | — (pending INT Azure 2.0 ranges) |
-| prd | `10.218.64.0/22` | `10.218.68.0/22` | `10.218.72.0/22` (**reserved — not deployed**) |
+| Env | Region file (uksouth) | Hub01 | Hub02 | Hub03 |
+|---|---|---|---|---|
+| int | [`region/uksouth/int.connectivity.tfvars`](environments/region/uksouth/int.connectivity.tfvars) | `10.170.245.0/24` | `10.170.246.0/24` | — |
+| prd | [`region/uksouth/prd.connectivity.tfvars`](environments/region/uksouth/prd.connectivity.tfvars) | `10.218.64.0/22` | `10.218.68.0/22` | `10.218.72.0/22` (reserved) |
+| igmf | [`region/uksouth/igmf.connectivity.tfvars`](environments/region/uksouth/igmf.connectivity.tfvars) | same as int (isolated tenant) | same | — |
+
+Italy/Spain connectivity tfvars exist with the same tag standard; **hub CIDRs are blank** until the regional address plan is filled — do not apply those locations yet.
 
 prd parent **`10.218.64.0/20`** holds three `/22` slices; only Hub01/02 are applied. See Hub03 below and [`docs/address-plan-hubs.md`](docs/address-plan-hubs.md).
 
@@ -1175,10 +1309,13 @@ Offline until creds: `terraform init -backend=false` + `terraform validate` only
 |---|---|
 | TF owns | vWAN, hubs, spokes, LAW/alerts, lab storage/KV, AVD objects, gallery **definitions** |
 | PS owns | Session hosts, token consume, AG user RBAC, Packer versions, agent VMSS, FSLogix profile ops, DCR associations |
-| First env | `int` |
+| Named pipelines | `tf-vWAN` · `tf-Hub` · `tf-Hub-Management` · `tf-AVD-Labs` · `tf-AVD-Hostpool` |
+| First env | `int` (sandbox: `igmf`) |
 | Prod env folder | `prd` |
-| Location (pipeline) | `uksouth` live; `italynorth` / `spaincentral` placeholders |
-| Apply order | `vwan` → connectivity → mgmt → labs → avd |
+| vWAN root | `config/vwan` (not under `environments/`) |
+| Region values | `environments/region/<location>/<env>.<stack>.tfvars` (`-var-file`) |
+| Location (pipeline) | `uksouth` live; `italynorth` / `spaincentral` selectable but not deploy-ready |
+| Apply order | vWAN → Hub → Management → Labs → Hostpool |
 | State keys | `{env}/{stack}.tfstate` (uksouth); `{env}/{location}/{stack}.tfstate` (other) |
 | avd providers | `azurerm` + `azapi` (personal SP schedules) + `time` (tokens) |
 | PERS/PRIV path | Spoke → Hub01 (internet security + default-to-firewall) → AZFW / Routing Intent / ER |
@@ -1191,8 +1328,9 @@ Offline until creds: `terraform init -backend=false` + `terraform validate` only
 | PERS blobs | 12 STAs; no CMK |
 | Lab KVs | **15** (2+12+1) |
 | Alerts | Deploy both envs; **enabled only in prd** |
-| DNS | `10.19.96.1`, `10.19.97.1` |
-| Still open by design | Hub02 VPN peer; FWP allow rules; TDA naming board; deploy-time GUIDs; Hub03 enable when needed; PRIV avd outputs |
+| DNS (bank) | `10.19.96.1`, `10.19.97.1` (IGMF: Azure DNS `168.63.129.16`) |
+| Mandatory tags (int/prd) | `430034` / `Limited` / `VirtualTeam` / `AL17611` |
+| Still open by design | Hub02 VPN peer; FWP allow rules; TDA naming board; deploy-time GUIDs; Hub03 enable when needed; PRIV avd outputs; italy/spain CIDRs |
 
 ---
 
